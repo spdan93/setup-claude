@@ -1,0 +1,15 @@
+{
+  "thresholds": {
+    "issue_creation_agent_trigger": 5,
+    "max_tasks_direct_mode": 5
+  },
+  "defaults": {
+    "retry_attempts": 3,
+    "retry_backoff_ms": 500,
+    "rate_limit_delay_ms": 500
+  },
+  "hooks": {
+    "enabled": false,
+    "_comment": "Pipeline hooks disabled by default. Only the delete-2FA guard in .claude/hooks/ is active."
+  }
+}

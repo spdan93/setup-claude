@@ -1,0 +1,60 @@
+{
+  "pipeline_id": "example-feature",
+  "created": "2025-01-01T12:00:00.000000",
+  "sources": {
+    "prd": "docs/prds/2025_01_01-example-feature.md",
+    "prd_version": "1.0",
+    "plan": "docs/plans/2025_01_01-example-feature-plan.md",
+    "plan_version": "1.0"
+  },
+  "epic": null,
+  "total_issues": 4,
+  "phases": [
+    {
+      "id": 1,
+      "name": "Phase 1",
+      "tasks": {
+        "task-1-1-a1b2c": {
+          "task_ref": "1.1",
+          "title": "Define data model",
+          "tracker_id": "ABC-101",
+          "context": "## Context\nDefine the core data model and types for the feature, including the main entity and its relationships as described in the PRD.",
+          "depends_on": []
+        },
+        "task-1-2-d3e4f": {
+          "task_ref": "1.2",
+          "title": "Implement service layer",
+          "tracker_id": "ABC-102",
+          "context": "## Context\nImplement the service that exposes CRUD operations over the data model defined in task 1.1, following the project's conventions for validation and error handling.",
+          "depends_on": [
+            "task-1-1-a1b2c"
+          ]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Phase 2",
+      "tasks": {
+        "task-2-1-g5h6i": {
+          "task_ref": "2.1",
+          "title": "Add UI",
+          "tracker_id": "ABC-103",
+          "context": "## Context\nBuild the user-facing UI that consumes the service layer, including list and form views, loading states, and error handling.",
+          "depends_on": [
+            "task-1-2-d3e4f"
+          ]
+        },
+        "task-2-2-j7k8l": {
+          "task_ref": "2.2",
+          "title": "Add tests",
+          "tracker_id": null,
+          "context": "## Context\nAdd unit and integration tests covering the data model, service layer, and UI for the feature.",
+          "depends_on": [
+            "task-2-1-g5h6i"
+          ]
+        }
+      }
+    }
+  ]
+}

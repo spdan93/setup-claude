@@ -1,0 +1,10 @@
+# OS / editor junk
+.DS_Store
+**/.DS_Store
+
+# Runtime state created by the delete-2FA hook
+**/.delete-2fa-state.json
+
+# Per-install stamps (only exist in installed targets, never in this repo)
+**/.kit-version
+**/.kit-manifest
