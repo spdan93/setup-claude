@@ -30,22 +30,17 @@ for d in skills/doc-*/; do [ -f "${d}SKILL.md" ] && echo "$d"; done
 
 Exclude `doc-changelog` (template-only; changelog is produced automatically by `/commit`, not here).
 
-Present the discovered types to the user via `AskUserQuestion`:
+For each directory returned by the glob above, read the `description:` field from its `SKILL.md` YAML frontmatter. The directories discovered by the glob are exactly the options presented — each option's label is the type name (e.g. `technical`) and its description is the value read from that skill's `SKILL.md` at run time.
 
-| Label | Description (from skill's `description` frontmatter) |
-|-------|------------------------------------------------------|
-| `technical` | Architecture, module design, ADRs — how the system works internally. |
-| `functional` | What the system does from a business/user perspective, business rules, functional flows. |
-| `test-plan` | Structured test scenarios and cases (steps, expected results). |
-| `api` | REST endpoints and/or OpenAPI/Swagger spec, generated from the code. |
+Present those options to the user via `AskUserQuestion`. Do NOT use hard-coded descriptions; always read the live `description:` from each `SKILL.md`.
 
 ### 2. Invoke the skill
 
-```
-Skill("doc-<type>")
-```
+Forward any `--template=<name>` flag and the path/feature hint to the skill unchanged. Example:
 
-Forward any `--template=<name>` flag and the path/feature hint to the skill unchanged.
+```
+Skill("doc-technical", "--template=adr src/backend")
+```
 
 The skill handles everything from here: template selection, context gathering, generation, and writing the artifact.
 
