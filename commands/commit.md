@@ -125,7 +125,92 @@ To **auto-close the issue** (if the tracker supports it), add to the footer:
 Fixes <ISSUE-ID>
 ```
 
-### 7. Commit Process
+### 7. Generate the Changelog Entry
+
+Before running `git commit`, create a changelog entry so it ships inside the commit it describes.
+
+**7a. Resolve metadata**
+
+```bash
+AUTHOR=$(git config user.name)
+DATE=$(date +%Y-%m-%d)
+TIME=$(date +%H:%M)
+STAMP=$(date +%Y_%m_%d-%H%M)
+BRANCH=$(git branch --show-current)
+# List staged files (use git status --porcelain if nothing is staged yet)
+git diff --cached --name-only
+```
+
+Extract `type` and `scope` from the commit title (e.g. `feat(auth)` → type=`feat`, scope=`auth`). Set `issue` to the linked identifier or `null`.
+
+**7b. Build the slug**
+
+Convert the commit title to kebab-case, strip special characters, truncate to ≤50 characters.
+Example: `feat(auth): add refresh-token rotation` → `add-refresh-token-rotation`.
+
+**7c. Fill the template**
+
+Read `skills/doc-changelog/templates/commit-entry.md` and substitute every `{{placeholder}}` with the resolved value. If the template file is missing, use the inline format below as a fallback:
+
+```markdown
+---
+date: <DATE>
+time: <TIME>
+author: <AUTHOR>
+branch: <BRANCH>
+type: <type>
+scope: <scope>
+commit_title: <full commit title>
+files_changed: <N>
+issue: <ISSUE-ID|null>
+---
+
+# <commit title>
+
+## Cause
+<why the change was necessary>
+
+## Changes
+<files / functions / components changed>
+
+## Consequence
+<impact / result>
+
+## Functionality
+<how it works>
+
+## Gain
+<technical or business benefit>
+
+## Files
+<- one bullet per changed file path>
+```
+
+**7d. Write and stage the entry**
+
+```bash
+# Write the filled entry
+# Path follows the convention: docs/changelog/YYYY_MM_DD-HHMM-{slug}.md
+CHANGELOG_FILE="docs/changelog/${STAMP}-${slug}.md"
+# (write the filled template content to $CHANGELOG_FILE)
+
+# Stage the changelog file along with any other staged changes
+git add -A
+```
+
+The changelog file must be staged so it is included in the commit it describes.
+
+**7e. (Optional) Update the index**
+
+Append a one-line entry to `docs/changelog/INDEX.md`:
+
+```
+- <DATE> <TIME> — <commit title> — <AUTHOR>
+```
+
+Stage the index file if updated.
+
+### 8. Commit Process
 
 **IMPORTANT**: NEVER change the current branch. Commit and push must be done on the checked-out branch.
 
@@ -135,7 +220,7 @@ Execute in order:
 # 1. Check current branch (for logging only, DO NOT change)
 git branch --show-current
 
-# 2. Add all modified files
+# 2. Add all modified files (changelog entry already staged in step 7)
 git add -A
 
 # 3. Create commit with structured message (include [<ISSUE-ID>] if provided)
@@ -150,7 +235,7 @@ git push
 
 > **Multiple remotes**: If the repo is configured with more than one remote (e.g. a mirror), push to each as needed — `git remote -v` lists them, then `git push <remote>` per remote. Otherwise a plain `git push` is sufficient.
 
-### 8. Important Rules
+### 9. Important Rules
 
 1. **NEVER switch branches**: Always respect the checked-out branch
 2. **Mandatory analysis**: ALWAYS analyze diff before creating message
@@ -159,7 +244,7 @@ git push
 5. **Body language**: Write the body in the project's dominant language (default English); keep all 5 sections
 6. **Push**: Push to the configured remote(s) after committing
 
-### 9. Error Handling
+### 10. Error Handling
 
 If push fails:
 - Check for remote commits not synced (`git pull --rebase`)
@@ -170,7 +255,7 @@ If no changes to commit:
 - Inform user there are no pending changes
 - Don't execute unnecessary commands
 
-### 10. Checklist
+### 11. Checklist
 
 Before finishing, verify:
 
@@ -181,6 +266,7 @@ Before finishing, verify:
 - [ ] All 5 sections (Cause/Changes/Consequence/Functionality/Gain) are present and clear
 - [ ] Specific technical files were mentioned
 - [ ] Footer includes "Developed-by: {git config user.name}"
+- [ ] Changelog entry written to `docs/changelog/` and staged
 - [ ] Commit was created successfully
 - [ ] Push was executed successfully to the configured remote(s)
 
