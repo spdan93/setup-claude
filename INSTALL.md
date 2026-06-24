@@ -77,7 +77,7 @@ cat /caminho/do/projeto/.claude/.kit-version
 | Peça | Nível | Caminho |
 |------|-------|---------|
 | Statusline | **usuário** | `~/.claude/statusline/` + `statusLine` em `~/.claude/settings.json` |
-| Comandos, agentes, skills | **projeto** | `<repo>/.claude/{commands,agents,skills/}` (inclui `skills/doc-*`) |
+| Comandos, agentes, skills | **projeto** | `<repo>/.claude/{commands,agents,skills}/` (inclui `skills/doc-*`) |
 | Hook delete-2FA | **projeto** | `<repo>/.claude/hooks/` + `hooks` em `<repo>/.claude/settings.json` |
 | Estado do pipeline | **projeto** | `<repo>/.claude/orchestrator/pipelines/` (efêmero, gitignored) |
 | PRDs / Plans / changelog / docs | **repo (versionado)** | `<repo>/docs/...` — **fora** do `.claude` |
