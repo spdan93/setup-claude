@@ -50,7 +50,7 @@ A good technical document answers three questions a reader could not answer by s
 
 ### 2. Select a template and output language
 
-See **Template selection** and **Output language** below. Resolve both before writing.
+See **Output language** and **Template selection** below. Resolve both before writing.
 
 ### 3. Fill grounded in real code
 

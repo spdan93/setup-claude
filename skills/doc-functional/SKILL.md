@@ -50,7 +50,7 @@ A good functional document answers three questions a non-technical stakeholder c
 
 ### 2. Select a template and output language
 
-See **Template selection** and **Output language** below. Resolve both before writing.
+See **Output language** and **Template selection** below. Resolve both before writing.
 
 ### 3. Fill grounded in observable behaviour
 
