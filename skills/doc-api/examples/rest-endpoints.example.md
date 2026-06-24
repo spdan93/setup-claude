@@ -186,7 +186,7 @@ Returns the full details of a single short link by its internal ID.
 |---|---|---|
 | 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
 | 403 | `FORBIDDEN` | Token lacks `links:read` scope, or the link belongs to another Operator. |
-| 404 | `NOT_FOUND` | No link with the given `id` exists. |
+| 404 | `LINK_NOT_FOUND` | No link with the given `id` exists. |
 | 500 | `INTERNAL_ERROR` | Unexpected server error. |
 
 ---
@@ -242,7 +242,7 @@ Partially updates a short link. Supports changing the destination URL, expiry da
 | 400 | `VALIDATION_ERROR` | `destinationUrl` uses a forbidden scheme; `expiresAt` is in the past. |
 | 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
 | 403 | `FORBIDDEN` | Token lacks `links:write` scope, or the link belongs to another Operator. |
-| 404 | `NOT_FOUND` | No link with the given `id` exists. |
+| 404 | `LINK_NOT_FOUND` | No link with the given `id` exists. |
 | 500 | `INTERNAL_ERROR` | Unexpected server error. |
 
 ---
@@ -290,5 +290,5 @@ Returns click statistics for a single short link.
 | 400 | `VALIDATION_ERROR` | `from` or `to` is not a valid date; `from` is after `to`. |
 | 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
 | 403 | `FORBIDDEN` | Token lacks `links:read` scope, or the link belongs to another Operator. |
-| 404 | `NOT_FOUND` | No link with the given `id` exists. |
+| 404 | `LINK_NOT_FOUND` | No link with the given `id` exists. |
 | 500 | `INTERNAL_ERROR` | Unexpected server error. |
