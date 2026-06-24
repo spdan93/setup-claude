@@ -11,10 +11,13 @@ Complete workflow to document, version bump, and commit changes with a push to t
 
 ## Overview
 
-This command combines two workflows into one:
+This command combines three steps into one workflow:
 
-1. **Documentation** - Version bumping, changelog updates, and feature documentation
-2. **Commit** - Structured commit message with optional issue-tracker linking and push
+1. **Version Bump** - Detect changed packages and bump versions accordingly
+2. **Documentation** *(optional)* - If the change warrants formal docs, invoke `/documentation` to generate the relevant doc type
+3. **Commit & Push** - Invoke `/commit`, which writes the structured commit message **and** produces a per-commit changelog artifact under `docs/changelog/` automatically
+
+> **Changelog note**: The changelog is produced automatically by `/commit` (one artifact per commit under `docs/changelog/`) — `/ship` does not maintain a separate changelog.
 
 ## Instructions
 
@@ -22,7 +25,7 @@ Execute this command when you've completed a feature or fix and want to ship it 
 
 ---
 
-## PHASE 1: Documentation & Versioning
+## PHASE 1: Versioning
 
 ### 1.1 Check Changes Across All Packages (MANDATORY)
 
@@ -80,32 +83,7 @@ cd <package-dir> && npm version X.Y.Z --no-git-tag-version
 
 For other ecosystems, edit the version field in the manifest directly (`pyproject.toml`, `Cargo.toml`, etc.).
 
-### 1.2 Update Changelogs (MANDATORY)
-
-Update the project's changelog(s). Common locations (use whichever the project has):
-
-#### a) Root or per-package `CHANGELOG.md`
-
-1. Add a new entry at the top (after any `## [Unreleased]` section) with the date and version.
-2. Use the existing format. If none exists, follow Keep a Changelog style:
-
-   ```markdown
-   ## [X.Y.Z] - YYYY-MM-DD
-
-   ### Added / Changed / Fixed / Removed
-
-   - **Feature Name**: Brief description
-     - Detail 1
-     - Detail 2
-   ```
-
-#### b) Documentation-site changelog page (if the project has a docs site)
-
-If the project publishes a docs site with a changelog page (e.g. `docs/changelog`), add the same entry there in that site's format, and update any "Last updated" line if present.
-
-**Update every changelog the project maintains.** If the project only has one, update that one.
-
-### 1.3 Feature Analysis
+### 1.2 Feature Analysis
 
 Before documenting, analyze:
 
@@ -114,7 +92,7 @@ Before documenting, analyze:
 - How it works (flow, dependencies, integrations)
 - Why it was implemented (use case, problem solved)
 
-### 1.4 Document Location
+### 1.3 Document Location
 
 **If user specified a path after the command**, use that exact path.
 
@@ -133,7 +111,7 @@ Before documenting, analyze:
 
 Map these categories onto the project's actual docs directory layout.
 
-### 1.5 Documentation Pattern
+### 1.4 Documentation Pattern
 
 Follow the project's existing documentation format (Markdown, MDX, reStructuredText, etc.). A generic structure:
 
@@ -186,7 +164,7 @@ Header: value
 - Best practices
 ````
 
-### 1.6 Writing Rules
+### 1.5 Writing Rules
 
 1. **Incremental**: Add content without removing existing documentation, unless the feature invalidates old docs
 2. **Consistent**: Use same style, formatting, and tone as existing documents
@@ -194,6 +172,14 @@ Header: value
 4. **Real examples**: Use examples that work in the project's actual context
 5. **Document language**: Keep each document's existing language
 6. **Internal links**: Reference other documentation sections when relevant
+
+---
+
+## PHASE 1.5: Documentation (Optional)
+
+If the change warrants formal documentation (new feature, API change, architecture update, etc.), invoke the `/documentation` command to generate the relevant doc type before committing.
+
+If no docs are needed, skip to Phase 2.
 
 ---
 
@@ -206,9 +192,10 @@ The `commit` skill handles the complete commit workflow:
 - Asking about optional issue-tracker linking
 - Creating the commit with the mandatory 5-section structure (Cause/Changes/Consequence/Functionality/Gain)
 - Adding the `Developed-by` footer
+- Writing a per-commit changelog artifact under `docs/changelog/` automatically
 - Pushing to the configured remote(s)
 
-**DO NOT** duplicate the commit logic here. `commit` is the single source of truth for commit message format and process.
+**DO NOT** duplicate the commit logic here. `commit` is the single source of truth for commit message format, changelog artifact, and push process.
 
 ---
 
@@ -216,13 +203,14 @@ The `commit` skill handles the complete commit workflow:
 
 Before finishing, verify:
 
-**Phase 1 - Documentation:**
+**Phase 1 - Versioning:**
 
 - [ ] Checked changes in ALL changed packages/apps
 - [ ] Bumped version in the manifest for each changed package
-- [ ] Updated `CHANGELOG.md` for each changed package (if it exists)
-- [ ] Updated the docs-site changelog page (if the project has one)
-- [ ] Updated any "Last updated" marker in the changelog (if present)
+
+**Phase 1 (optional) - Documentation:**
+
+- [ ] If change warrants formal docs, `/documentation` was invoked
 - [ ] Document is in the correct location in the docs directory
 - [ ] Valid formatting for the docs format used
 - [ ] Code examples are correct
