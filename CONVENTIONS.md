@@ -119,8 +119,16 @@ Opcional e não incluído. Sempre que um ID de issue aparecer, use o placeholder
 
 ## Idioma
 
-- **Prosa / docs / commits**: seguir a convenção dominante do projeto (detectar pelos
-  docs/commits; default inglês se incerto).
+- **Artefatos de documentação** (saída das skills `doc-*`): idioma escolhido pelo usuário
+  no momento da geração — **pt-BR** (default), en-US ou es. A skill pergunta via
+  `AskUserQuestion` antes de escrever; o usuário pode omitir para aceitar pt-BR.
+  Os headings das seções do artefato são traduzidos para o idioma escolhido.
+- **`SKILL.md` (prose de instrução)**: sempre em inglês — é instrução para o LLM, não
+  conteúdo para o usuário final.
+- **Changelog por commit** (`docs/changelog/`): escrito em pt-BR por padrão; não há
+  prompt de idioma por commit.
+- **Mensagem de commit**: segue a convenção do projeto (detectar pelo histórico;
+  default inglês se incerto).
 - **Headings de template** (PRD/Plan/meta-prompt): inglês canônico (lista acima).
 
 ---

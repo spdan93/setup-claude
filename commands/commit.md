@@ -129,6 +129,10 @@ Fixes <ISSUE-ID>
 
 Before running `git commit`, create a changelog entry so it ships inside the commit it describes.
 
+> **Idioma do changelog**: a entrada de changelog é escrita em **pt-BR por padrão**. Não
+> há prompt de idioma por commit — o changelog segue pt-BR independentemente do idioma da
+> mensagem de commit.
+
 **7a. Resolve metadata**
 
 ```bash

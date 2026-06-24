@@ -125,7 +125,8 @@ artefato antes de seguir). Nada é commitado automaticamente.
   semântico e então invoca `/commit` (que grava o changelog). Aceite o bump inline
   (`minor`, `patch`, `fix 1.6.4`) ou um path de doc.
 - **`/documentation`** — roteador que descobre automaticamente todos os `skills/doc-*/`
-  (exceto `doc-changelog`) e delega ao tipo escolhido. Tipos disponíveis:
+  (exceto `doc-changelog`) e delega ao tipo escolhido. Pergunta o idioma do artefato
+  (pt-BR padrão, en-US, es) antes de gerar. Tipos disponíveis:
 
   | Tipo | Comando | Saída |
   |------|---------|-------|

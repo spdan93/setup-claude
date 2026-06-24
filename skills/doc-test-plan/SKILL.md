@@ -67,9 +67,9 @@ Never place run evidence in `docs/test-plans/` and never place planned cases in 
 - Identify environments, test accounts, and any fixture data needed.
 - Check `docs/test-plans/` for existing plans that overlap — avoid duplication, extend instead.
 
-### 2. Select a template
+### 2. Select a template and output language
 
-See **Template selection** below.
+See **Template selection** and **Output language** below. Resolve both before writing.
 
 ### 3. Populate the plan grounded in requirements
 
@@ -96,6 +96,20 @@ where `YYYY_MM_DD` is today's date (e.g., `2026_06_23`). The `docs/` directory l
 
 Report the exact path to the user when done.
 
+## Output language
+
+```
+1. If --lang=<code> was given, use that language code.
+2. Else, if the user has already stated a preferred language in this conversation, use it.
+3. Else → AskUserQuestion:
+   "What language should the artifact be written in?
+    1. pt-BR (default)
+    2. en-US
+    3. es"
+   Use the choice; default to pt-BR if the user skips or presses Enter.
+4. Write the entire artifact — body text AND section headings — in the chosen language.
+```
+
 ## Template selection
 
 ```
@@ -106,6 +120,8 @@ Report the exact path to the user when done.
    - ≥2 templates → AskUserQuestion showing each (name + one-line description); use the choice.
 3. Users add custom templates by dropping files into skills/doc-test-plan/templates/.
 ```
+
+> When both a template choice AND a language choice are needed (≥2 templates and no prior language signal), combine both into a **single** `AskUserQuestion` call.
 
 **Examples:** `examples/` holds a filled reference per template (`examples/<template-basename>.example.<ext>`). Consult the matching example for depth/tone while filling; you may show it alongside the template when the user is choosing.
 
@@ -118,6 +134,6 @@ Before reporting the document as complete, verify each item:
 - [ ] Preconditions list only setup steps that genuinely exist (seeds, env vars, accounts).
 - [ ] Out of Scope section is filled — not left blank.
 - [ ] Output path matches `docs/test-plans/YYYY_MM_DD-{slug}.md` exactly (correct date, valid slug).
-- [ ] Document language matches the project's convention (default: English).
+- [ ] Artifact is written entirely in the user-selected language (default pt-BR).
 - [ ] Slug is kebab-case, lowercase `[a-z0-9-]`, ≤50 characters.
 - [ ] Sign-off section names the reviewer and date.

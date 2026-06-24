@@ -51,9 +51,9 @@ Good API documentation answers the questions a consumer cannot answer by reading
 - Identify request DTOs/schemas, response types, and guard/middleware decorators.
 - Note any existing docs in `docs/api/` — update rather than duplicate.
 
-### 2. Select a template
+### 2. Select a template and output language
 
-See **Template selection** below.
+See **Template selection** and **Output language** below. Resolve both before writing.
 
 ### 3. Fill grounded in real code
 
@@ -82,6 +82,20 @@ Both paths live under `docs/api/` at the repository root. Never write inside `.c
 
 Report the exact output path(s) to the user when done.
 
+## Output language
+
+```
+1. If --lang=<code> was given, use that language code.
+2. Else, if the user has already stated a preferred language in this conversation, use it.
+3. Else → AskUserQuestion:
+   "What language should the artifact be written in?
+    1. pt-BR (default)
+    2. en-US
+    3. es"
+   Use the choice; default to pt-BR if the user skips or presses Enter.
+4. Write the entire artifact — body text AND section headings — in the chosen language.
+```
+
 ## Template selection
 
 ```
@@ -92,6 +106,8 @@ Report the exact output path(s) to the user when done.
    - ≥2 templates → AskUserQuestion showing each (name + one-line description); use the choice.
 3. Users add custom templates by dropping files into skills/doc-api/templates/.
 ```
+
+> When both a template choice AND a language choice are needed (≥2 templates and no prior language signal), combine both into a **single** `AskUserQuestion` call.
 
 **Examples:** `examples/` holds a filled reference per template (`examples/<template-basename>.example.<ext>`). Consult the matching example for depth/tone while filling; you may show it alongside the template when the user is choosing.
 
@@ -114,5 +130,5 @@ Before reporting the document as complete, verify each item:
 - [ ] Error responses list the specific status codes and messages a caller must handle.
 - [ ] Output path matches the chosen template's convention exactly (correct date, valid slug, or `openapi.yaml`).
 - [ ] The OpenAPI output (if produced) is valid YAML and declares `openapi: 3.0.x` or higher at the top level.
-- [ ] Document language matches the project's convention (default: English).
+- [ ] Artifact is written entirely in the user-selected language (default pt-BR).
 - [ ] Slug (for Markdown output) is kebab-case, lowercase `[a-z0-9-]`, ≤50 characters.
