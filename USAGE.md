@@ -112,19 +112,27 @@ artefato antes de seguir). Nada é commitado automaticamente.
 
 | Comando | O que faz | Uso |
 |---------|-----------|-----|
-| `/commit` | Commit estruturado (5 seções) + push | `/commit` · `/commit "valida formulário de signup"` |
-| `/ship` | Documenta + version bump + changelog + `/commit` | `/ship` · `/ship minor` · `/ship fix 1.6.4` |
-| `/documentation` | Só documenta e/ou registra changelog (escolhe o modo) | `/documentation` · `/documentation minor` |
+| `/commit` | Commit estruturado (5 seções) + grava entrada em `docs/changelog/` + push | `/commit` · `/commit "valida formulário de signup"` |
+| `/ship` | Version bump + `/commit` (que já grava o changelog) | `/ship` · `/ship minor` · `/ship fix 1.6.4` |
+| `/documentation <tipo>` | Gera documentação do tipo escolhido via skill `doc-<tipo>` | `/documentation technical` · `/documentation api` |
 
 - **`/commit`** — analisa o diff, pergunta se quer linkar a uma issue (`<ISSUE-ID>` no
-  título; `Fixes <ISSUE-ID>` no rodapé), e exige as **5 seções obrigatórias** no corpo
-  (Cause, Changes, Consequence, Functionality, Gain) + `Developed-by`. Nunca troca de
-  branch; faz push no(s) remote(s) configurado(s).
+  título; `Fixes <ISSUE-ID>` no rodapé), exige as **5 seções obrigatórias** no corpo
+  (Cause, Changes, Consequence, Functionality, Gain) + `Developed-by`, e **grava uma
+  entrada de changelog** em `docs/changelog/YYYY_MM_DD-HHMM-{slug}.md` como parte do
+  commit. Nunca troca de branch; faz push no(s) remote(s) configurado(s).
 - **`/ship`** — fecha uma feature: descobre os pacotes alterados, faz version bump
-  semântico, atualiza changelog(s) e então invoca o `/commit`. Aceite o bump inline
+  semântico e então invoca `/commit` (que grava o changelog). Aceite o bump inline
   (`minor`, `patch`, `fix 1.6.4`) ou um path de doc.
-- **`/documentation`** — pergunta o modo: (1) só documentar feature, (2) só changelog +
-  bump, (3) ambos, (4) comando livre. Use quando quer docs sem commitar.
+- **`/documentation`** — roteador que descobre automaticamente todos os `skills/doc-*/`
+  (exceto `doc-changelog`) e delega ao tipo escolhido. Tipos disponíveis:
+
+  | Tipo | Comando | Saída |
+  |------|---------|-------|
+  | Documentação técnica | `/documentation technical` | `docs/technical/` |
+  | Documentação funcional | `/documentation functional` | `docs/functional/` |
+  | Caderno de testes | `/documentation test-plan` | `docs/test-plans/` |
+  | Documentação de API | `/documentation api` | `docs/api/` |
 
 ### Utilitários
 
@@ -185,6 +193,10 @@ pipeline** e você normalmente não chama à mão:
 | `bug-tracker` | direto | Audita commits recentes em busca de bugs e gera plano de correção |
 | `microservices-analyzer` | direto | Análise de arquitetura: C4, catálogo de serviços, dependências |
 | `playwright-e2e-testing` | direto | Guia/padrões de E2E Playwright (usado pelo `/e2e`) |
+| `doc-technical` | `/documentation technical` | Gera documentação técnica em `docs/technical/` |
+| `doc-functional` | `/documentation functional` | Gera documentação funcional em `docs/functional/` |
+| `doc-test-plan` | `/documentation test-plan` | Gera caderno de testes em `docs/test-plans/` |
+| `doc-api` | `/documentation api` | Gera documentação de API em `docs/api/` |
 
 ---
 
@@ -202,6 +214,9 @@ pipeline** e você normalmente não chama à mão:
 - **Documentar + versionar + commitar de uma vez** → `/ship`
 - **Auditar bugs de commits recentes** → invoque a skill `bug-tracker`
 - **Documentar um diretório p/ agentes** → `/claude-md create ./src/feature`
+- **Gerar caderno de testes** → `/documentation test-plan`
+- **Documentar a API** → `/documentation api`
+- **Gerar documentação técnica de um módulo** → `/documentation technical`
 
 ---
 

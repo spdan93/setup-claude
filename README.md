@@ -216,7 +216,7 @@ Task(subagent_type="developer", prompt="Implementar task-2-1-abc do Plan docs/pl
 │   ├── develop.md          # Executa as tasks do Plan (DAG)
 │   ├── test-write.md       # Testes 1:1 dos TC-*
 │   ├── e2e.md              # E2E de browser + evidência
-│   ├── commit · ship · documentation.md          # Commit / release / docs
+│   ├── commit · ship · documentation.md          # Commit (grava changelog por commit) / release / docs
 │   ├── meta-prompt.md      # Prompt estruturado (manual)
 │   ├── claude-md.md        # Cria/edita CLAUDE.md
 │   └── confirm-delete.md   # 2FA do hook de delete
@@ -227,7 +227,12 @@ Task(subagent_type="developer", prompt="Implementar task-2-1-abc do Plan docs/pl
 │   ├── checkpoint-validator/       # interna: gates de aprovação
 │   ├── bug-tracker/                # standalone: audita bugs em commits
 │   ├── microservices-analyzer/     # standalone: análise de arquitetura (C4)
-│   └── playwright-e2e-testing/     # standalone: guia/padrões de E2E
+│   ├── playwright-e2e-testing/     # standalone: guia/padrões de E2E
+│   ├── doc-technical/              # documentação técnica (via /documentation)
+│   ├── doc-functional/             # documentação funcional (via /documentation)
+│   ├── doc-test-plan/              # cadernos de testes (via /documentation)
+│   ├── doc-api/                    # documentação de API (via /documentation)
+│   └── doc-changelog/              # template-only: usado internamente pelo /commit
 │
 ├── hooks/delete-2fa.sh     # Guarda de comandos destrutivos (2FA)
 ├── statusline/             # Statusline mac/linux/windows (nível de usuário)
@@ -246,8 +251,14 @@ Task(subagent_type="developer", prompt="Implementar task-2-1-abc do Plan docs/pl
 docs/
 ├── prds/
 │   └── YYYY_MM_DD-{pipeline_id}.md          # PRD oficial
-└── plans/
-    └── YYYY_MM_DD-{pipeline_id}-plan.md     # Implementation Plan
+├── plans/
+│   └── YYYY_MM_DD-{pipeline_id}-plan.md     # Implementation Plan
+├── changelog/                               # docs/changelog/ — entrada por commit (gerada pelo /commit)
+│   └── YYYY_MM_DD-HHMM-{slug}.md
+├── technical/                               # Documentação técnica (/documentation technical)
+├── functional/                              # Documentação funcional (/documentation functional)
+├── test-plans/                              # Cadernos de testes (/documentation test-plan)
+└── api/                                     # Documentação de API (/documentation api)
 
 .claude/orchestrator/pipelines/{pipeline_id}/
 ├── pipeline-state.json                      # Estado do pipeline
@@ -375,8 +386,9 @@ ou desabilite se não usar um.
 
 ## Skills
 
-O kit traz 6 skills. Três são **internas do pipeline** (acionadas pelos comandos/agentes —
-você raramente chama à mão) e três são **standalone** (uso direto, independentes do pipeline):
+O kit traz 10 skills. Três são **internas do pipeline** (acionadas pelos comandos/agentes —
+você raramente chama à mão), três são **standalone** (uso direto, independentes do pipeline)
+e quatro são skills de **documentação sob demanda** (invocadas via `/documentation`):
 
 | Skill | Tipo | O que faz |
 | ----- | ---- | --------- |
@@ -386,9 +398,14 @@ você raramente chama à mão) e três são **standalone** (uso direto, independ
 | `bug-tracker` | standalone | Audita commits recentes em busca de bugs e gera plano de correção priorizado |
 | `microservices-analyzer` | standalone | Análise de arquitetura a partir do repo: diagramas C4, catálogo de serviços, matriz de dependências |
 | `playwright-e2e-testing` | standalone | Guia e padrões de testes E2E com Playwright (usado pelo `/e2e`) |
+| `doc-technical` | documentação, sob demanda | Gera documentação técnica em `docs/technical/` |
+| `doc-functional` | documentação, sob demanda | Gera documentação funcional em `docs/functional/` |
+| `doc-test-plan` | documentação, sob demanda | Gera cadernos de testes em `docs/test-plans/` |
+| `doc-api` | documentação, sob demanda | Gera documentação de API em `docs/api/` |
 
-Cada skill é uma pasta `skills/<nome>/SKILL.md`. As standalone disparam pela descrição (ou
-podem ser invocadas explicitamente); as internas são acionadas pelo próprio pipeline.
+Cada skill é uma pasta `skills/<nome>/SKILL.md`. As de documentação disparam via
+`/documentation <tipo>` ou pela descrição da tarefa; as standalone disparam pela descrição
+(ou podem ser invocadas explicitamente); as internas são acionadas pelo próprio pipeline.
 
 > As standalone (`bug-tracker`, `microservices-analyzer`, `playwright-e2e-testing`) não têm
 > relação com o pipeline PRD→Plan — são ferramentas avulsas que vêm no kit e funcionam em

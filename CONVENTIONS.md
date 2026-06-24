@@ -16,10 +16,15 @@ quebra em silêncio (ex.: o `developer` procura a seção "Test Cases (immutable
 |----------|---------|
 | PRD | `docs/prds/YYYY_MM_DD-{pipeline_id}.md` |
 | Implementation Plan | `docs/plans/YYYY_MM_DD-{pipeline_id}-plan.md` |
+| Changelog por commit | `docs/changelog/YYYY_MM_DD-HHMM-{slug}.md` |
+| Documentação técnica | `docs/technical/` |
+| Documentação funcional | `docs/functional/` |
+| Cadernos de testes | `docs/test-plans/` |
+| Documentação de API | `docs/api/` (+ `docs/api/openapi.yaml` se aplicável) |
+| Evidência E2E | `docs/test-evidence/{feature}-{timestamp}.md` |
 | Estado do pipeline | `.claude/orchestrator/pipelines/{pipeline_id}/pipeline-state.json` |
 | Manifest (opcional) | `.claude/orchestrator/pipelines/{pipeline_id}/issues-manifest.json` |
 | Progresso de execução | `.claude/orchestrator/pipelines/{pipeline_id}/dev-status.json` (efêmero; status por task, p/ `/develop` resumir) |
-| Evidência E2E | `docs/test-evidence/{feature}-{timestamp}.md` |
 
 > **Localização**: artefatos duráveis (PRDs, plans, changelog, docs, evidências) ficam em
 > `docs/` na **raiz do repo** — fora do `.claude/` e **versionados** no git. O `.claude/`
@@ -29,6 +34,36 @@ quebra em silêncio (ex.: o `developer` procura a seção "Test Cases (immutable
 ### `pipeline_id`
 Slug do título: `lowercase`, `kebab-case`, apenas `[a-z0-9-]`, ≤ 50 chars.
 Ex.: "Push Notifications for Users" → `push-notifications-for-users`.
+
+### Convenção de datas
+
+- **Nomes de arquivo**: `YYYY_MM_DD` com underscores (ex.: `2026_06_23-feature.md`).
+- **Campo `Date:` dentro do documento**: ISO `YYYY-MM-DD` com hífens (ex.: `2026-06-23`).
+
+---
+
+## Tipos de documentação
+
+O kit inclui quatro tipos de documentação sob demanda, cada um como uma skill
+`skills/doc-<tipo>/` com `SKILL.md` + `templates/` + `examples/`:
+
+| Tipo | Skill | Diretório de saída |
+|------|-------|-------------------|
+| Técnico | `doc-technical` | `docs/technical/` |
+| Funcional | `doc-functional` | `docs/functional/` |
+| Caderno de testes | `doc-test-plan` | `docs/test-plans/` |
+| API | `doc-api` | `docs/api/` |
+
+> `doc-changelog` é **somente template** (sem `SKILL.md`) — não aparece no `/documentation`
+> e não é invocada diretamente; o `/commit` a usa internamente.
+
+**Seleção de template**: cada skill lista seus templates disponíveis e seleciona o mais
+adequado com base na descrição/contexto fornecido pelo usuário.
+
+**Adicionar um novo tipo**: crie `skills/doc-<novo>/` com `SKILL.md` (frontmatter `name`/`description`)
++ `templates/` + `examples/` (um exemplo preenchido por template). O `/documentation`
+descobre automaticamente qualquer `skills/doc-*/SKILL.md` (exceto `doc-changelog`) e
+dispara pela descrição da tarefa.
 
 ---
 
