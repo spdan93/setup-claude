@@ -38,6 +38,7 @@ Uses the **workflow-orchestrator** skill for phase logic and delegates to:
 - `developer` (Phase 4 - per task)
 
 **Commands**:
+- `/develop` (Phase 4 - runs Plan tasks in dependency order via the developer agent)
 - `/e2e` (Phase 5 - browser E2E validation for UI-visible features)
 
 **Skills**:
@@ -103,9 +104,11 @@ This ensures consistent, complete context transfer between pipeline phases.
 5. If approved → Advance to Phase 4
 
 ### Phase 4: Execution
-1. Show message: "Tasks ready. Developer agents can pick up tasks directly from the Plan."
-2. User can manually trigger a developer per task OR use automation
-3. After implementation finishes, advance to Phase 5 if the feature has a
+1. Run `/develop --all` to execute the Plan's tasks in dependency order (or `/develop` for
+   one task at a time). It drives the `developer` agent per task, tracks progress in
+   `dev-status.json` (resumable), and keeps each task's diff reviewable. Use `--yolo` for an
+   autonomous run that auto-commits per task.
+2. After implementation finishes, advance to Phase 5 if the feature has a
    browser-visible surface (any UI). For pure backend/library work, skip to commit.
 
 ### Phase 5: E2E Validation (optional, only for browser-visible features)

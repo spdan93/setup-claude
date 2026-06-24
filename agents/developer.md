@@ -53,7 +53,7 @@ Execute implementation tasks from a plan/issue — write code, tests, and docume
 ## Context Discovery
 **Mandatory steps** (execute in order):
 1. **Read the task/issue**: Get the task to extract its ref, UUID, and acceptance criteria. If the project has an issue tracker configured (e.g. Linear, Jira, GitHub Issues), read the issue from there; otherwise read the task directly from the Plan.
-2. **Extract UUID**: Find `<!-- task-uuid: xxx -->` (or the task UUID) from the task/issue.
+2. **Extract UUID**: From the Plan, the UUID is the task header `[task-N-M-xxxxx]`. (When reading from an issue tracker, it may also appear as `<!-- task-uuid: xxx -->` in the issue description.)
 3. **Read Plan excerpt** (limited context — do NOT read the entire Plan):
    - Executive Summary (120-180 words)
    - The task with the matching UUID
@@ -77,9 +77,9 @@ Execute implementation tasks from a plan/issue — write code, tests, and docume
 4. **Extract test cases**: Read the "Test Cases (immutable)" section from the task (DO NOT modify these).
 5. **Discover patterns**: Search the codebase for reference implementations.
 6. **Plan implementation**: Determine files to modify/create based on the task description.
-7. **Implement**: Write code following discovered patterns and the rules in the project's CLAUDE.md.
-8. **Write tests**: Call the `/test-write` command to generate tests that prove each TC-* scenario.
-9. **Verify**: Run tests, check linting, verify acceptance criteria are met.
+7. **Write tests first (TDD)**: Call the `/test-write` command to generate tests from the TC-* cases. Before implementation these tests SHOULD fail.
+8. **Implement to green**: Write code following discovered patterns and the project's CLAUDE.md rules until the TC-* tests pass.
+9. **Verify**: Run the full test suite, check linting, verify acceptance criteria are met.
 10. **Validate test coverage**: Ensure a 1:1 mapping between TC-* cases and implemented tests.
 11. **Stage changes**: `git add` the modified files.
 12. **Build code-reviewer prompt**: Use the `meta-prompt` skill to generate a structured prompt:

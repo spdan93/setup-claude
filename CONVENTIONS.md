@@ -18,6 +18,7 @@ quebra em silêncio (ex.: o `developer` procura a seção "Test Cases (immutable
 | Implementation Plan | `docs/plans/YYYY_MM_DD-{pipeline_id}-plan.md` |
 | Estado do pipeline | `.claude/orchestrator/pipelines/{pipeline_id}/pipeline-state.json` |
 | Manifest (opcional) | `.claude/orchestrator/pipelines/{pipeline_id}/issues-manifest.json` |
+| Progresso de execução | `.claude/orchestrator/pipelines/{pipeline_id}/dev-status.json` (efêmero; status por task, p/ `/develop` resumir) |
 | Evidência E2E | `docs/test-evidence/{feature}-{timestamp}.md` |
 
 > **Localização**: artefatos duráveis (PRDs, plans, changelog, docs, evidências) ficam em

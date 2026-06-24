@@ -41,9 +41,11 @@ Happy path, de ponta a ponta:
    `docs/plans/2026_06_22-push-notifications-plan.md` com fases, tasks (UUID
    `task-N-M-xxxxx`), critérios de aceite e **Test Cases (immutable)** `[TC-N.M-NN]`.
    → **Checkpoint** (mostra contagem de tasks).
-5. **Fase 4/4 — Execução**: as tasks ficam prontas no Plan; um agente `developer` pega
-   cada uma e implementa (código + testes via `/test-write` + review via `code-reviewer`),
-   deixando tudo **staged, não commitado**.
+5. **Fase 4/4 — Execução**: rode `/develop --all` para executar as tasks do Plan na ordem
+   de dependência. Ele dirige o agente `developer` por task (código + testes via
+   `/test-write` + review via `code-reviewer`), grava progresso em `dev-status.json`
+   (resumível) e mantém o diff de cada task revisável. `/develop` sozinho faz a próxima
+   task; `--yolo` roda autônomo e commita por task.
 6. **Fase 5 — E2E (opcional)**: só se a feature tiver UI. Pergunta se quer rodar; se sim,
    chama `/e2e <feature> --final` (precisa do dev server no ar). Gera evidência em
    `docs/test-evidence/`.
@@ -75,7 +77,13 @@ artefato antes de seguir). Nada é commitado automaticamente.
 | `/prd-write` | Cria um PRD novo a partir de uma ideia | `/prd-write "Add Google OAuth login"` |
 | `/prd-review` | Revisa/refina um PRD existente (edita no lugar) | `/prd-review docs/prds/2026_06_22-feature.md` |
 | `/plan-create` | Gera o Implementation Plan de um PRD aprovado | `/plan-create --prd=docs/prds/2026_06_22-feature.md` |
+| `/develop` | Executa as tasks do Plan na ordem de dependência (DAG) via `developer` | `/develop --all` · `/develop --task=task-2-1-abc` |
 
+- **`/develop`** — a fase de Execução. Lê o Plan, executa as tasks respeitando o DAG de
+  dependências, invoca o `developer` por task e grava progresso em `dev-status.json`
+  (dá **resume**). Sem flag, faz a próxima task não-bloqueada; `--all` percorre tudo;
+  `--task=<uuid|ref>` faz uma; `--yolo` roda sem checkpoints e commita por task;
+  `--status` só mostra o quadro de progresso.
 - **`/prd-write`** — sem argumento, pergunta a ideia. Se o PRD já existir, oferece
   `overwrite` / `version bump` / `cancel`. Use quando só quer o documento, sem o pipeline.
 - **`/prd-review`** — sem path, lista os PRDs em `docs/prds/` (mais novos primeiro) para
@@ -146,6 +154,10 @@ Task(subagent_type="developer", prompt="Implemente task-2-1-a3b2c do Plan docs/p
 Task(subagent_type="developer", model="opus", prompt="...")   # override de modelo
 ```
 
+> Para executar tasks do Plan, prefira **`/develop`** — ele já envolve o `developer` com
+> ordem de dependência (DAG), `meta-prompt`, progresso resumível e commits por task.
+> Chamar o `developer` direto via `Task` é o caminho de baixo nível (uma task avulsa).
+
 | Agente | Modelo | O que faz |
 |--------|--------|-----------|
 | `prd-writer` | opus | Transforma uma ideia em PRD estruturado em `docs/prds/` |
@@ -182,6 +194,9 @@ pipeline** e você normalmente não chama à mão:
 - **Já tenho PRD, quero o Plan** → `/plan-create --prd=docs/prds/2026_06_22-feature.md`
 - **Pipeline inteiro sem parar em cada gate** → `/workflow --yolo`
 - **Retomar da fase de Plan** → `/workflow --from=plan`
+- **Executar o Plan inteiro (DAG) de forma autônoma** → `/develop --all --yolo`
+- **Implementar a próxima task / uma task específica** → `/develop` · `/develop --task=2.1`
+- **Ver o progresso da execução** → `/develop --status`
 - **Gerar testes a partir dos TC de uma task** → `/test-write --plan=docs/plans/x.md --task=task-1-2-abc`
 - **Validar feature de UI no browser** → suba o dev server, depois `/e2e checkout --url=http://localhost:3000 --final`
 - **Documentar + versionar + commitar de uma vez** → `/ship`
