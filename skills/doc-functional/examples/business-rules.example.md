@@ -1,32 +1,32 @@
-# Business Rules: URL Shortener Service
+# Regras de Negócio: Serviço de Encurtamento de URLs
 
-> **Scope**: All rules that govern link creation, redirect behaviour, expiry, alias management, and traffic handling for the URL Shortener Service.
-> **Owner**: Platform team (primary); Marketing team (business authority for expiry and alias policies).
-> **Last reviewed**: 2026-06-23
+> **Escopo**: Todas as regras que governam a criação de links, comportamento de redirecionamento, expiração, gerenciamento de aliases e controle de tráfego do Serviço de Encurtamento de URLs.
+> **Responsável**: Equipe de plataforma (principal); equipe de marketing (autoridade de negócio para políticas de expiração e alias).
+> **Última revisão**: 2026-06-23
 
-## Rules
+## Regras
 
-| Rule ID | Description | Condition | Outcome | Source |
+| ID da Regra | Descrição | Condição | Resultado | Fonte |
 |---|---|---|---|---|
-| BR-001 | Link expiry | When a short link has a configured `expiresAt` timestamp and the current UTC time is greater than or equal to that timestamp | The system refuses the redirect and presents the Visitor with a human-readable "This link has expired" message; the link record is retained for audit purposes and is not automatically deleted | Product policy — initial requirements review, 2026-01 |
-| BR-002 | Custom alias uniqueness | When an Operator submits a request to create a short link with a custom alias and that alias string already exists in the system (active or deactivated) | The system rejects the creation request with an explicit error message identifying the conflicting alias; no link is created | Platform design constraint — uniqueness enforced by database index |
-| BR-003 | Redirect rate limiting per IP | When a single client IP address makes more than 60 redirect requests within any rolling 60-second window | The system returns a "Too Many Requests" response to that IP for the remainder of the 60-second window; legitimate redirect traffic is unaffected; the Operator who owns the targeted link is not notified unless the pattern persists for more than 5 minutes | Security policy — abuse prevention, 2026-01 |
-| BR-004 | Permitted URL schemes | When an Operator submits a destination URL that uses a scheme other than `http` or `https` (examples: `javascript:`, `ftp://`, `data:`, `file://`) | The system rejects the creation request and informs the Operator that only `http` and `https` destination URLs are permitted | Security policy — prevents cross-site scripting and protocol-handler abuse, 2026-01 |
-| BR-005 | Deactivated link redirect refusal | When a Visitor follows a short link that an Operator has explicitly marked as deactivated (regardless of whether the link has an expiry date) | The system refuses the redirect and presents the Visitor with a "Link unavailable" message; the click event is not recorded | Product policy — operators must be able to stop redirects immediately |
-| BR-006 | Click count eventual consistency | When a Visitor successfully follows an active, non-expired short link | The system increments the click count for that link within 30 seconds of the redirect response being sent; the count increment may be asynchronous and is not guaranteed to be reflected in the Operator's view instantaneously | Engineering trade-off — async counting accepted to keep redirect latency below 10 ms; documented in technical design |
-| BR-007 | Expiry date must be in the future | When an Operator submits a link creation or update request with an `expiresAt` value that is less than or equal to the current UTC time | The system rejects the request and informs the Operator that the expiry date must be a future timestamp | Product policy — prevents accidental creation of immediately-expired links, 2026-03 |
-| BR-008 | Alias character restrictions | When an Operator submits a custom alias | The system accepts only characters matching `[a-zA-Z0-9_-]` and rejects any alias exceeding 30 characters; aliases failing either constraint cause the creation request to be rejected with a descriptive error | Platform design constraint — ensures URL-safety without percent-encoding |
+| BR-001 | Expiração de link | Quando um link curto possui um timestamp `expiresAt` configurado e o horário UTC atual é maior ou igual a esse timestamp | O sistema recusa o redirecionamento e exibe ao Visitante uma mensagem legível "Este link expirou"; o registro do link é mantido para fins de auditoria e não é automaticamente excluído | Política de produto — revisão de requisitos iniciais, 2026-01 |
+| BR-002 | Unicidade de alias personalizado | Quando um Operador envia uma requisição para criar um link curto com um alias personalizado e essa string de alias já existe no sistema (ativa ou desativada) | O sistema rejeita a requisição de criação com uma mensagem de erro explícita identificando o alias em conflito; nenhum link é criado | Restrição de design da plataforma — unicidade aplicada por índice do banco de dados |
+| BR-003 | Rate limiting de redirecionamento por IP | Quando um único IP cliente faz mais de 60 requisições de redirecionamento em qualquer janela deslizante de 60 segundos | O sistema retorna uma resposta "Muitas Requisições" para esse IP pelo restante da janela de 60 segundos; o tráfego legítimo de redirecionamento não é afetado; o Operador dono do link alvo não é notificado a menos que o padrão persista por mais de 5 minutos | Política de segurança — prevenção de abuso, 2026-01 |
+| BR-004 | Esquemas de URL permitidos | Quando um Operador envia uma URL de destino que usa um esquema diferente de `http` ou `https` (exemplos: `javascript:`, `ftp://`, `data:`, `file://`) | O sistema rejeita a requisição de criação e informa ao Operador que apenas URLs de destino `http` e `https` são permitidas | Política de segurança — previne cross-site scripting e abuso de protocol handler, 2026-01 |
+| BR-005 | Recusa de redirecionamento para link desativado | Quando um Visitante acessa um link curto que um Operador marcou explicitamente como desativado (independentemente de o link ter data de expiração) | O sistema recusa o redirecionamento e exibe ao Visitante a mensagem "Link indisponível"; o evento de clique não é registrado | Política de produto — operadores devem poder interromper redirecionamentos imediatamente |
+| BR-006 | Consistência eventual da contagem de cliques | Quando um Visitante acessa com sucesso um link curto ativo e não expirado | O sistema incrementa a contagem de cliques para aquele link em até 30 segundos após o envio da resposta de redirecionamento; o incremento pode ser assíncrono e não é garantido que seja refletido imediatamente na visão do Operador | Compromisso de engenharia — contagem assíncrona aceita para manter latência de redirecionamento abaixo de 10 ms; documentado no design técnico |
+| BR-007 | Data de expiração deve ser futura | Quando um Operador envia uma requisição de criação ou atualização de link com um valor `expiresAt` menor ou igual ao horário UTC atual | O sistema rejeita a requisição e informa ao Operador que a data de expiração deve ser um timestamp futuro | Política de produto — previne a criação acidental de links já expirados, 2026-03 |
+| BR-008 | Restrições de caracteres do alias | Quando um Operador envia um alias personalizado | O sistema aceita apenas caracteres que correspondam a `[a-zA-Z0-9_-]` e rejeita qualquer alias com mais de 30 caracteres; aliases que falhem em qualquer uma das restrições causam a rejeição da requisição de criação com uma mensagem de erro descritiva | Restrição de design da plataforma — garante segurança de URL sem codificação percentual |
 
-> **Column guide**
-> - **Rule ID**: stable identifier; never reuse a retired ID — mark retired rules ~~struck through~~ instead.
-> - **Description**: a short name usable as a label in flows and acceptance criteria.
-> - **Condition**: the exact trigger ("when the cart total exceeds $500", "when the user's account status is Suspended").
-> - **Outcome**: what the system must do — expressed in observable, user-facing terms.
-> - **Source**: the requirement, policy document, or authority that established this rule.
+> **Guia de colunas**
+> - **ID da Regra**: identificador estável; nunca reutilizar um ID descontinuado — marcar regras descontinuadas com ~~tachado~~ em vez de removê-las.
+> - **Descrição**: um nome curto utilizável como rótulo em fluxos e critérios de aceite.
+> - **Condição**: o gatilho exato ("quando o total do carrinho excede R$500", "quando o status da conta do usuário é Suspenso").
+> - **Resultado**: o que o sistema deve fazer — expresso em termos observáveis e voltados ao usuário.
+> - **Fonte**: o requisito, documento de política ou autoridade que estabeleceu esta regra.
 
-## Notes
+## Notas
 
-- **BR-001 vs BR-005 interaction**: A link that is both deactivated and expired presents as "Link unavailable" (BR-005 takes precedence) because "unavailable" is the broader, operator-controlled state. If an Operator reactivates the link after the expiry date has also passed, the link immediately presents as "expired" (BR-001).
-- **BR-003 threshold review pending**: The 60-requests-per-60-seconds threshold was set conservatively at launch. The platform team will review actual traffic patterns at the 3-month mark and may relax the limit for authenticated API consumers.
-- **BR-006 tolerance window**: The 30-second window is a service-level commitment, not a hard technical limit. Monitoring alerts fire if the p99 flush latency exceeds 20 seconds.
-- **Cross-reference**: BR-001, BR-002, BR-005 are all referenced in the Functional Specification flows (the companion Functional Specification (`docs/functional/2026_06_23-url-shortener.md`)).
+- **Interação BR-001 vs BR-005**: Um link que está tanto desativado quanto expirado é apresentado como "Link indisponível" (BR-005 tem precedência) porque "indisponível" é o estado mais abrangente, controlado pelo operador. Se um Operador reativar o link após a data de expiração já ter passado, o link imediatamente é apresentado como "expirado" (BR-001).
+- **Revisão pendente do limiar BR-003**: O limiar de 60 requisições por 60 segundos foi definido de forma conservadora no lançamento. A equipe de plataforma revisará os padrões de tráfego reais na marca dos 3 meses e poderá relaxar o limite para consumidores autenticados da API.
+- **Janela de tolerância BR-006**: A janela de 30 segundos é um compromisso de nível de serviço, não um limite técnico rígido. Alertas de monitoramento disparam se a latência de flush p99 exceder 20 segundos.
+- **Referência cruzada**: BR-001, BR-002, BR-005 são todos referenciados nos fluxos da Especificação Funcional (a Especificação Funcional correspondente em `docs/functional/2026_06_23-url-shortener.md`).

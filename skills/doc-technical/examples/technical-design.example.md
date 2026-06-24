@@ -1,24 +1,24 @@
-# URL Shortener Service — Technical Design
+# Serviço de Encurtamento de URLs — Design Técnico
 
-## Overview
+## Visão Geral
 
-The URL Shortener Service converts arbitrarily long URLs into compact short codes (e.g., `https://sho.rt/aB3x9`) and redirects visitors to the original destination. It is designed for internal marketing and analytics teams who need shareable, trackable links at a scale of roughly 10 million redirects per day. The service provides a public redirect API and a private management API for creating, updating, and expiring links.
+O Serviço de Encurtamento de URLs converte URLs arbitrariamente longas em códigos curtos compactos (ex.: `https://sho.rt/aB3x9`) e redireciona os visitantes para o destino original. O serviço foi projetado para equipes internas de marketing e analytics que precisam de links compartilháveis e rastreáveis em uma escala de aproximadamente 10 milhões de redirecionamentos por dia. Ele oferece uma API pública de redirecionamento e uma API privada de gerenciamento para criar, atualizar e expirar links.
 
-## Architecture
+## Arquitetura
 
-The system is composed of three runtime layers: an API gateway, a stateless application service, and a persistence tier with an in-process cache.
+O sistema é composto por três camadas de execução: um API gateway, um serviço de aplicação sem estado e uma camada de persistência com cache em processo.
 
 ```
-Client Browser / API Consumer
+Browser do Cliente / Consumidor da API
         │
         ▼
   ┌─────────────┐
-  │ API Gateway │   — TLS termination, rate limiting, auth forwarding
+  │ API Gateway │   — encerramento TLS, rate limiting, encaminhamento de auth
   └──────┬──────┘
          │
          ▼
   ┌──────────────────┐
-  │  App Service     │   — short-code generation, redirect resolution, CRUD
+  │  App Service     │   — geração de short code, resolução de redirecionamento, CRUD
   │  (Node.js / TS)  │
   └──────┬───────────┘
          │
@@ -26,80 +26,81 @@ Client Browser / API Consumer
     ▼                           ▼
 ┌──────────┐            ┌──────────────┐
 │  Redis   │            │  PostgreSQL  │
-│  (cache) │            │  (primary    │
-│          │◄──populate─│   data store)│
-└──────────┘            └──────────────┘
+│  (cache) │            │  (armazena-  │
+│          │◄──populate─│   mento      │
+└──────────┘            │   primário)  │
+                        └──────────────┘
 ```
 
-The gateway handles rate limiting so the app service can remain stateless and horizontally scalable. Redis holds a read-through cache of the 1 million most-accessed short codes, keeping redirect latency below 10 ms for hot paths.
+O gateway cuida do rate limiting para que o serviço de aplicação permaneça sem estado e escale horizontalmente. O Redis mantém um cache read-through dos 1 milhão de short codes mais acessados, mantendo a latência de redirecionamento abaixo de 10 ms para os caminhos mais quentes.
 
-## Components & Responsibilities
+## Componentes e Responsabilidades
 
-| Component | Responsibility | Key file(s) |
+| Componente | Responsabilidade | Arquivo(s) principal(is) |
 |---|---|---|
-| **API Gateway** | TLS termination, per-IP rate limiting (BR-003), JWT validation for management endpoints, request routing | Infrastructure config (`nginx/nginx.conf`) |
-| **LinkController** | Validates incoming HTTP requests, enforces input constraints, delegates to LinkService, formats responses | `src/controllers/link.controller.ts` |
-| **LinkService** | Orchestrates short-code creation (calls Encoder), cache writes, database writes, redirect lookups, expiry enforcement | `src/services/link.service.ts` |
-| **Encoder** | Converts auto-incremented database IDs to base62 short codes; inverse decode for audit use | `src/lib/encoder.ts` |
-| **LinkRepository** | TypeORM repository; owns all database reads/writes for the `links` table; never called from outside LinkService | `src/repositories/link.repository.ts` |
-| **CacheClient** | Thin wrapper around `ioredis`; exposes `get`, `set`, and `invalidate` typed to the `CachedLink` shape | `src/lib/cache-client.ts` |
-| **ClickTracker** | Publishes a lightweight click event to an in-process queue; a background worker flushes counts to PostgreSQL in batches of 500 | `src/workers/click-tracker.ts` |
+| **API Gateway** | Encerramento TLS, rate limiting por IP (BR-003), validação de JWT para endpoints de gerenciamento, roteamento de requisições | Config de infraestrutura (`nginx/nginx.conf`) |
+| **LinkController** | Valida requisições HTTP recebidas, aplica restrições de entrada, delega ao LinkService, formata respostas | `src/controllers/link.controller.ts` |
+| **LinkService** | Orquestra a criação de short codes (chama Encoder), escritas no cache, escritas no banco de dados, resolução de redirecionamentos, aplicação de expiração | `src/services/link.service.ts` |
+| **Encoder** | Converte IDs auto-incrementados do banco de dados em short codes base62; decodificação inversa para uso em auditoria | `src/lib/encoder.ts` |
+| **LinkRepository** | Repositório TypeORM; responsável por todas as leituras/escritas no banco para a tabela `links`; nunca chamado fora do LinkService | `src/repositories/link.repository.ts` |
+| **CacheClient** | Wrapper leve em torno do `ioredis`; expõe `get`, `set` e `invalidate` tipados para o formato `CachedLink` | `src/lib/cache-client.ts` |
+| **ClickTracker** | Publica um evento de clique leve em uma fila em processo; um worker em segundo plano descarrega contagens no PostgreSQL em lotes de 500 | `src/workers/click-tracker.ts` |
 
-**Not owned by this service:** user authentication (delegated to the gateway), URL preview rendering (a separate preview microservice), and analytics dashboards (read directly from the `click_events` table by a BI service).
+**Fora do escopo deste serviço:** autenticação de usuários (delegada ao gateway), renderização de preview de URL (um microserviço de preview separado) e dashboards de analytics (leem diretamente da tabela `click_events` por um serviço de BI).
 
-## Data Flow
+## Fluxo de Dados
 
-### Short code creation (management API)
+### Criação de short code (API de gerenciamento)
 
-1. Authenticated client POSTs `{ url, alias?, expiresAt? }` to `POST /api/v1/links`.
-2. `LinkController` validates the URL format and checks that `alias` (if supplied) contains only `[a-zA-Z0-9_-]` and is ≤30 characters.
-3. `LinkService` calls `LinkRepository.insert(url, alias, expiresAt)`. The database auto-increments the row ID.
-4. If no `alias` was supplied, `Encoder.encode(rowId)` produces a base62 short code (4–7 characters). The code is written back to the row.
-5. `CacheClient.set(shortCode, { url, expiresAt })` with TTL equal to the link's remaining lifetime (default: no TTL if no expiry).
-6. The controller returns `201 Created` with `{ shortCode, shortUrl, expiresAt }`.
+1. Cliente autenticado faz POST `{ url, alias?, expiresAt? }` para `POST /api/v1/links`.
+2. `LinkController` valida o formato da URL e verifica que `alias` (se fornecido) contém apenas `[a-zA-Z0-9_-]` e tem ≤30 caracteres.
+3. `LinkService` chama `LinkRepository.insert(url, alias, expiresAt)`. O banco de dados auto-incrementa o ID da linha.
+4. Se nenhum `alias` foi fornecido, `Encoder.encode(rowId)` produz um short code base62 (4–7 caracteres). O código é gravado de volta na linha.
+5. `CacheClient.set(shortCode, { url, expiresAt })` com TTL igual ao tempo de vida restante do link (padrão: sem TTL se não houver expiração).
+6. O controller retorna `201 Created` com `{ shortCode, shortUrl, expiresAt }`.
 
-### Redirect (public API)
+### Redirecionamento (API pública)
 
-1. Browser GETs `/:shortCode`.
-2. `LinkService.resolve(shortCode)` checks `CacheClient.get(shortCode)` first.
-3. **Cache hit:** check `expiresAt`. If expired, return 410 Gone; otherwise return the URL and asynchronously increment the counter queue.
-4. **Cache miss:** query `LinkRepository.findByCode(shortCode)`. If not found → 404. If found → populate cache, then proceed as hit.
-5. Controller issues `301 Moved Permanently` for permanent links; `302 Found` for links with an expiry date (prevents browser caching of soon-to-expire links).
-6. `ClickTracker.record(shortCode, timestamp, referrer, userAgent)` is called after the response is flushed — the redirect is never blocked by tracking.
+1. Browser faz GET `/:shortCode`.
+2. `LinkService.resolve(shortCode)` verifica `CacheClient.get(shortCode)` primeiro.
+3. **Cache hit:** verifica `expiresAt`. Se expirado, retorna 410 Gone; caso contrário, retorna a URL e incrementa assincronamente a fila de contadores.
+4. **Cache miss:** consulta `LinkRepository.findByCode(shortCode)`. Se não encontrado → 404. Se encontrado → popula o cache e prossegue como cache hit.
+5. O controller emite `301 Moved Permanently` para links permanentes; `302 Found` para links com data de expiração (evita cache do browser para links prestes a expirar).
+6. `ClickTracker.record(shortCode, timestamp, referrer, userAgent)` é chamado após o envio da resposta — o redirecionamento nunca é bloqueado pelo rastreamento.
 
-## Dependencies
+## Dependências
 
-| Dependency | Type | Purpose |
+| Dependência | Tipo | Propósito |
 |---|---|---|
-| **PostgreSQL 15** | External data store | Durable storage of links, aliases, expiry dates, and click counts |
-| **Redis 7** | External cache | Sub-10 ms read path for redirect resolution; TTL-based expiry of cached entries |
-| **ioredis** | Library | Typed Redis client with automatic reconnection and cluster support |
-| **TypeORM** | Library | ORM for the `links` and `click_events` tables; used only by `LinkRepository` |
-| **class-validator** | Library | Decorator-based DTO validation in `LinkController` |
-| **API Gateway (nginx)** | Internal upstream | Rate limiting (see BR-003); JWT header forwarding for management routes |
-| **Auth Service** | Internal dependency | Issues JWTs validated by the gateway; this service does not call it directly |
-| **Preview Service** | Internal downstream | Reads `links.url` to generate Open Graph previews; this service does not call it |
+| **PostgreSQL 15** | Armazenamento externo | Armazenamento durável de links, aliases, datas de expiração e contagens de cliques |
+| **Redis 7** | Cache externo | Caminho de leitura sub-10 ms para resolução de redirecionamentos; expiração por TTL de entradas em cache |
+| **ioredis** | Biblioteca | Cliente Redis tipado com reconexão automática e suporte a cluster |
+| **TypeORM** | Biblioteca | ORM para as tabelas `links` e `click_events`; usado apenas pelo `LinkRepository` |
+| **class-validator** | Biblioteca | Validação de DTO baseada em decoradores no `LinkController` |
+| **API Gateway (nginx)** | Upstream interno | Rate limiting (ver BR-003); encaminhamento de cabeçalho JWT para rotas de gerenciamento |
+| **Auth Service** | Dependência interna | Emite JWTs validados pelo gateway; este serviço não o chama diretamente |
+| **Preview Service** | Downstream interno | Lê `links.url` para gerar previews Open Graph; este serviço não o chama |
 
-## Key Decisions & Trade-offs
+## Decisões e Compromissos
 
-**Base62 counter encoding over random UUIDs.** Short codes are derived from the auto-incremented database row ID encoded in base62. This guarantees global uniqueness without a separate uniqueness check and produces short, predictable-length codes (a 4-character code handles up to 14.7 million links). The trade-off is that codes are enumerable: a bad actor can iterate codes to discover all active links. Mitigation: the redirect endpoint does not expose the target URL in any header before the redirect fires, and high-value links can use custom aliases that do not reveal the counter position.
+**Codificação de contador em base62 em vez de UUIDs aleatórios.** Os short codes são derivados do ID auto-incrementado da linha do banco de dados codificado em base62. Isso garante unicidade global sem uma verificação de unicidade separada e produz códigos curtos de comprimento previsível (um código de 4 caracteres suporta até 14,7 milhões de links). O compromisso é que os códigos são enumeráveis: um agente malicioso pode iterar os códigos para descobrir todos os links ativos. Mitigação: o endpoint de redirecionamento não expõe a URL de destino em nenhum cabeçalho antes do disparo do redirecionamento, e links de alto valor podem usar aliases personalizados que não revelam a posição do contador.
 
-**Read-through cache in Redis, not a CDN.** A CDN would give lower redirect latency globally but would serve stale 301 responses for minutes after a link is disabled or expired. Redis allows instant invalidation (`CacheClient.invalidate(shortCode)`) when an operator disables a link through the management API. The accepted cost is that cache serving is single-region; a global CDN layer may be added in a future phase for read-only, non-expiring links.
+**Cache read-through no Redis, não em CDN.** Uma CDN proporcionaria menor latência de redirecionamento globalmente, mas serviria respostas 301 obsoletas por minutos após um link ser desativado ou expirado. O Redis permite invalidação instantânea (`CacheClient.invalidate(shortCode)`) quando um operador desativa um link pela API de gerenciamento. O custo aceito é que o serviço de cache é de região única; uma camada de CDN global pode ser adicionada em uma fase futura para links somente leitura e sem expiração.
 
-**Asynchronous click counting.** Counting clicks on the critical redirect path would add a synchronous database write to every request. Instead, events are queued in-process and flushed in batches. This means click counts may be up to 10 seconds stale. Analytics consumers are explicitly informed of this lag; it is acceptable given that dashboards refresh at 60-second intervals.
+**Contagem de cliques assíncrona.** Contar cliques no caminho crítico de redirecionamento adicionaria uma escrita síncrona no banco de dados a cada requisição. Em vez disso, os eventos são enfileirados em processo e descarregados em lotes. Isso significa que as contagens de cliques podem estar defasadas em até 10 segundos. Os consumidores de analytics são informados explicitamente sobre esse atraso; é aceitável dado que os dashboards atualizam em intervalos de 60 segundos.
 
-**302 for links with expiry, 301 for permanent links.** Browsers cache 301 responses indefinitely. Using 302 for expiring links ensures that after a link expires, the browser fetches the redirect target fresh and receives the 410 Gone response rather than serving a stale destination from its cache.
+**302 para links com expiração, 301 para links permanentes.** Os browsers armazenam respostas 301 indefinidamente. Usar 302 para links com expiração garante que, após o link expirar, o browser busque o destino do redirecionamento atualizado e receba a resposta 410 Gone em vez de servir um destino obsoleto do seu cache.
 
-## Risks
+## Riscos
 
-- **Counter exhaustion:** At 100 million links, 5-character base62 codes are still available (62^5 ≈ 916 million). No action needed in the short term; `Encoder` can be updated to use 6-character codes by bumping a constant when the table approaches 800 million rows.
-- **Redis unavailability:** If Redis is unreachable, `LinkService.resolve` falls back to PostgreSQL directly. Redirect latency degrades to ~50 ms (from ~5 ms) but correctness is maintained. Management operations are unaffected.
-- **Batch click flush loss:** If the process crashes while the in-memory click queue is non-empty, up to 500 click events can be lost. This is a known, accepted trade-off given the analytics-only nature of the data. A future improvement is to persist the queue to Redis before process shutdown.
-- **Alias squatting:** Any authenticated user can reserve a custom alias. There is no namespace isolation between teams. A centralised alias registry (outside this service's scope) is planned for a later phase.
+- **Esgotamento do contador:** Com 100 milhões de links, os short codes de 5 caracteres em base62 ainda estão disponíveis (62^5 ≈ 916 milhões). Nenhuma ação necessária no curto prazo; o `Encoder` pode ser atualizado para usar códigos de 6 caracteres incrementando uma constante quando a tabela se aproximar de 800 milhões de linhas.
+- **Indisponibilidade do Redis:** Se o Redis estiver inacessível, `LinkService.resolve` cai diretamente no PostgreSQL. A latência de redirecionamento degrada para ~50 ms (de ~5 ms), mas a correção é mantida. As operações de gerenciamento não são afetadas.
+- **Perda no flush de cliques em lote:** Se o processo cair enquanto a fila de cliques em memória não estiver vazia, até 500 eventos de clique podem ser perdidos. Este é um compromisso conhecido e aceito dado o caráter exclusivamente analítico dos dados. Uma melhoria futura é persistir a fila no Redis antes do encerramento do processo.
+- **Squatting de alias:** Qualquer usuário autenticado pode reservar um alias personalizado. Não há isolamento de namespace entre equipes. Um registro centralizado de aliases (fora do escopo deste serviço) está planejado para uma fase posterior.
 
-## References
+## Referências
 
-- ADR: Use base62 counter encoding for short codes — `skills/doc-technical/examples/adr.example.md`
-- Business Rules register — `skills/doc-functional/examples/business-rules.example.md`
-- Functional Specification — `skills/doc-functional/examples/functional-spec.example.md`
-- RFC 7231 §6.4.2 (301 Moved Permanently) and §6.4.3 (302 Found)
+- ADR: Uso de codificação de contador em base62 para short codes — `skills/doc-technical/examples/adr.example.md`
+- Registro de Regras de Negócio — `skills/doc-functional/examples/business-rules.example.md`
+- Especificação Funcional — `skills/doc-functional/examples/functional-spec.example.md`
+- RFC 7231 §6.4.2 (301 Moved Permanently) e §6.4.3 (302 Found)
