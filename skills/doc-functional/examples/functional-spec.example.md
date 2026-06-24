@@ -28,12 +28,14 @@ Marketing teams and internal operators need a way to convert long, unwieldy URLs
 
 | Rule ID | Description | Condition | Outcome |
 |---|---|---|---|
-| BR-001 | Link expiry | When a short link has an `expiresAt` date-time and that date-time has passed | The system refuses the redirect and presents the Visitor with a "Link expired" notice; the link is not automatically deleted |
+| BR-001 | Link expiry | When a short link has an `expiresAt` date-time and the current UTC time is ≥ `expiresAt` | The system refuses the redirect and presents the Visitor with a "Link expired" notice; the link is not automatically deleted |
 | BR-002 | Custom alias uniqueness | When an Operator submits a custom alias that is identical to an existing active or deactivated alias | The system rejects the creation request and informs the Operator that the alias is already taken |
 | BR-003 | Rate limiting on redirect | When a single IP address makes more than 60 redirect requests within any 60-second window | The system temporarily blocks further requests from that IP for 60 seconds and returns a "Too many requests" response |
 | BR-004 | Destination URL must be reachable scheme | When the destination URL uses a scheme other than `http` or `https` (e.g., `javascript:`, `ftp://`) | The system rejects the creation request and informs the Operator that only http and https URLs are permitted |
 | BR-005 | Deactivated link redirect refusal | When a Visitor follows a short link that an Operator has explicitly deactivated | The system refuses the redirect and presents the Visitor with a "Link unavailable" notice |
 | BR-006 | Click count latency | When a Visitor follows a short link | The click count for that link is incremented within 30 seconds; it need not be synchronous with the redirect |
+
+Source and ownership for each rule are maintained in the companion Business Rules register (`docs/functional/...`).
 
 ## Functional Flows
 

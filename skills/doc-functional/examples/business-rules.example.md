@@ -29,4 +29,4 @@
 - **BR-001 vs BR-005 interaction**: A link that is both deactivated and expired presents as "Link unavailable" (BR-005 takes precedence) because "unavailable" is the broader, operator-controlled state. If an Operator reactivates the link after the expiry date has also passed, the link immediately presents as "expired" (BR-001).
 - **BR-003 threshold review pending**: The 60-requests-per-60-seconds threshold was set conservatively at launch. The platform team will review actual traffic patterns at the 3-month mark and may relax the limit for authenticated API consumers.
 - **BR-006 tolerance window**: The 30-second window is a service-level commitment, not a hard technical limit. Monitoring alerts fire if the p99 flush latency exceeds 20 seconds.
-- **Cross-reference**: BR-001, BR-002, BR-005 are all referenced in the Functional Specification flows (`skills/doc-functional/examples/functional-spec.example.md`).
+- **Cross-reference**: BR-001, BR-002, BR-005 are all referenced in the Functional Specification flows (the companion Functional Specification (`docs/functional/2026_06_23-url-shortener.md`)).

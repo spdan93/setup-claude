@@ -37,7 +37,7 @@ The gateway handles rate limiting so the app service can remain stateless and ho
 
 | Component | Responsibility | Key file(s) |
 |---|---|---|
-| **API Gateway** | TLS termination, per-IP rate limiting (BR-03), JWT validation for management endpoints, request routing | Infrastructure config (`nginx/nginx.conf`) |
+| **API Gateway** | TLS termination, per-IP rate limiting (BR-003), JWT validation for management endpoints, request routing | Infrastructure config (`nginx/nginx.conf`) |
 | **LinkController** | Validates incoming HTTP requests, enforces input constraints, delegates to LinkService, formats responses | `src/controllers/link.controller.ts` |
 | **LinkService** | Orchestrates short-code creation (calls Encoder), cache writes, database writes, redirect lookups, expiry enforcement | `src/services/link.service.ts` |
 | **Encoder** | Converts auto-incremented database IDs to base62 short codes; inverse decode for audit use | `src/lib/encoder.ts` |
@@ -76,7 +76,7 @@ The gateway handles rate limiting so the app service can remain stateless and ho
 | **ioredis** | Library | Typed Redis client with automatic reconnection and cluster support |
 | **TypeORM** | Library | ORM for the `links` and `click_events` tables; used only by `LinkRepository` |
 | **class-validator** | Library | Decorator-based DTO validation in `LinkController` |
-| **API Gateway (nginx)** | Internal upstream | Rate limiting (see BR-03); JWT header forwarding for management routes |
+| **API Gateway (nginx)** | Internal upstream | Rate limiting (see BR-003); JWT header forwarding for management routes |
 | **Auth Service** | Internal dependency | Issues JWTs validated by the gateway; this service does not call it directly |
 | **Preview Service** | Internal downstream | Reads `links.url` to generate Open Graph previews; this service does not call it |
 
