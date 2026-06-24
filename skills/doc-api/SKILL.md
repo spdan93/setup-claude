@@ -60,7 +60,14 @@ See **Template selection** below.
 - Every endpoint listed must exist in the current codebase — read the file and line before documenting it.
 - Request and response examples must reflect the actual schema types, not invented shapes.
 - If an auth requirement is not explicit in the code (guard, middleware, annotation), mark it `<!-- TODO: auth requirement unclear — verify with team -->`.
-- For the OpenAPI template: emit valid YAML conforming to `openapi: 3.x`. Validate structure before saving.
+- For the OpenAPI template: emit valid YAML conforming to `openapi: 3.x`. Validate the file before saving by running:
+  ```bash
+  python3 -c "import yaml; yaml.safe_load(open('docs/api/openapi.yaml'))" && echo "YAML_OK"
+  ```
+  For full OpenAPI lint (schema references, required fields, etc.) also run:
+  ```bash
+  npx @redocly/cli lint docs/api/openapi.yaml
+  ```
 
 ### 4. Write to the output path and report it
 
@@ -85,6 +92,8 @@ Report the exact output path(s) to the user when done.
    - ≥2 templates → AskUserQuestion showing each (name + one-line description); use the choice.
 3. Users add custom templates by dropping files into skills/doc-api/templates/.
 ```
+
+**Examples:** `examples/` holds a filled reference per template (`examples/<template-basename>.example.<ext>`). Consult the matching example for depth/tone while filling; you may show it alongside the template when the user is choosing.
 
 Note: the two built-in templates serve **different outputs**:
 

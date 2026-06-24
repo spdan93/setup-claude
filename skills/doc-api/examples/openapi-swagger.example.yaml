@@ -1,0 +1,538 @@
+# Example: fully-filled OpenAPI 3.0.3 spec for the URL Shortener Service.
+# Use this as a depth/tone reference when filling the openapi-swagger.yaml template.
+
+openapi: 3.0.3
+
+info:
+  title: "URL Shortener API"
+  description: >
+    Internal service that converts long URLs into short, shareable links, handles
+    redirects, and tracks click events. Consumed by the marketing portal (Operator UI)
+    and browser clients following short links (Visitors).
+  version: "1.0.0"
+  contact:
+    name: "Platform Team"
+    email: "platform@example.com"
+
+servers:
+  - url: "https://api.sho.rt/v1"
+    description: Production
+  - url: "https://staging-api.sho.rt/v1"
+    description: Staging
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Links
+    description: Create, read, update, and manage short links.
+  - name: Redirect
+    description: Public redirect endpoint (no auth required).
+  - name: Stats
+    description: Click analytics for short links.
+
+paths:
+  /links:
+    get:
+      summary: List links
+      description: Returns a paginated list of short links owned by the authenticated Operator.
+      operationId: listLinks
+      tags:
+        - Links
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Items per page.
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter by active status. Omit to return all links.
+      responses:
+        "200":
+          description: Paginated list of links.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create a short link
+      description: >
+        Creates a new short link for the given destination URL. Optionally accepts a
+        custom alias and an expiry date-time. The destination URL must use http or https
+        (BR-004). If an alias is supplied it must be globally unique (BR-002).
+      operationId: createLink
+      tags:
+        - Links
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkRequest"
+            example:
+              destinationUrl: "https://marketing.example.com/campaigns/summer-2026?utm_source=email"
+              alias: "summer-sale"
+              expiresAt: "2026-09-01T00:00:00Z"
+      responses:
+        "201":
+          description: Short link created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/AliasTaken"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /links/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Internal link ID (e.g. `lnk_01j8kxzp3n`).
+
+    get:
+      summary: Get a link
+      description: Returns the full details of a single short link by its internal ID.
+      operationId: getLink
+      tags:
+        - Links
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The requested link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    patch:
+      summary: Update a link
+      description: >
+        Partially updates a short link. Supports changing destinationUrl, expiresAt,
+        and active status. The shortCode is immutable after creation.
+      operationId: updateLink
+      tags:
+        - Links
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLinkRequest"
+            example:
+              destinationUrl: "https://marketing.example.com/campaigns/summer-2026-v2?utm_source=email"
+              active: true
+      responses:
+        "200":
+          description: Link updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Link"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /links/{id}/stats:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Internal link ID.
+
+    get:
+      summary: Get link click stats
+      description: Returns total click count and a per-day breakdown for the specified date range.
+      operationId: getLinkStats
+      tags:
+        - Stats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Start date (inclusive), format YYYY-MM-DD. Defaults to 30 days ago.
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: End date (inclusive), format YYYY-MM-DD. Defaults to today.
+      responses:
+        "200":
+          description: Click statistics for the link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkStats"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /{code}:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The short code or custom alias (e.g. `summer-sale`, `aB3x9`).
+
+    get:
+      summary: Follow a short link (redirect)
+      description: >
+        Public endpoint. Looks up the short code and redirects the caller to the
+        destination URL (302 Found). Returns 410 if the link is expired (BR-001) or
+        deactivated (BR-005), 404 if the code does not exist, and 429 if the caller's
+        IP is rate-limited (BR-003).
+      operationId: redirectLink
+      tags:
+        - Redirect
+      security: []
+      responses:
+        "302":
+          description: Redirect to the destination URL.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+              description: The destination URL.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          $ref: "#/components/responses/Gone"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Link:
+      type: object
+      required:
+        - id
+        - shortCode
+        - shortUrl
+        - destinationUrl
+        - active
+        - clicks
+        - createdAt
+      properties:
+        id:
+          type: string
+          example: "lnk_01j8kxzp3n"
+        shortCode:
+          type: string
+          example: "summer-sale"
+        shortUrl:
+          type: string
+          format: uri
+          example: "https://sho.rt/summer-sale"
+        destinationUrl:
+          type: string
+          format: uri
+          example: "https://marketing.example.com/campaigns/summer-2026?utm_source=email"
+        active:
+          type: boolean
+          example: true
+        clicks:
+          type: integer
+          minimum: 0
+          example: 142
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-09-01T00:00:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-06-23T10:15:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-06-23T14:00:00Z"
+
+    LinkList:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+        meta:
+          type: object
+          required:
+            - page
+            - limit
+            - total
+          properties:
+            page:
+              type: integer
+              example: 1
+            limit:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 1
+
+    CreateLinkRequest:
+      type: object
+      required:
+        - destinationUrl
+      properties:
+        destinationUrl:
+          type: string
+          format: uri
+          description: The long URL to redirect to. Must use http or https.
+          example: "https://marketing.example.com/campaigns/summer-2026?utm_source=email"
+        alias:
+          type: string
+          description: Custom short code. 3–50 characters, pattern [a-zA-Z0-9_-]. Must be globally unique.
+          minLength: 3
+          maxLength: 50
+          pattern: "^[a-zA-Z0-9_-]+$"
+          example: "summer-sale"
+        expiresAt:
+          type: string
+          format: date-time
+          description: ISO 8601 UTC expiry date-time. Must be in the future.
+          nullable: true
+          example: "2026-09-01T00:00:00Z"
+
+    UpdateLinkRequest:
+      type: object
+      properties:
+        destinationUrl:
+          type: string
+          format: uri
+          description: New destination URL. Must use http or https.
+          example: "https://marketing.example.com/campaigns/summer-2026-v2?utm_source=email"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: New expiry date-time. Pass null to remove expiry.
+          example: "2026-09-01T00:00:00Z"
+        active:
+          type: boolean
+          description: Set to true to reactivate, false to deactivate.
+          example: true
+
+    LinkStats:
+      type: object
+      required:
+        - id
+        - shortCode
+        - totalClicks
+        - clicksByDay
+      properties:
+        id:
+          type: string
+          example: "lnk_01j8kxzp3n"
+        shortCode:
+          type: string
+          example: "summer-sale"
+        totalClicks:
+          type: integer
+          minimum: 0
+          example: 142
+        clicksByDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyClicks"
+
+    DailyClicks:
+      type: object
+      required:
+        - date
+        - clicks
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-06-23"
+        clicks:
+          type: integer
+          minimum: 0
+          example: 43
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "destinationUrl must use http or https scheme."
+
+  responses:
+    Unauthorized:
+      description: Missing or expired Bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "UNAUTHORIZED"
+            message: "Bearer token is missing or has expired."
+
+    Forbidden:
+      description: Token lacks the required scope, or the resource belongs to another Operator.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "FORBIDDEN"
+            message: "You do not have permission to access this link."
+
+    NotFound:
+      description: The short code or link ID does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "LINK_NOT_FOUND"
+            message: "Link not found."
+
+    Gone:
+      description: The link exists but is expired (BR-001) or deactivated (BR-005).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "LINK_EXPIRED"
+            message: "This link has expired."
+
+    ValidationError:
+      description: Request body or query parameter failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "VALIDATION_ERROR"
+            message: "destinationUrl must use http or https scheme."
+
+    AliasTaken:
+      description: The provided alias is already in use (BR-002).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "ALIAS_TAKEN"
+            message: "The alias 'summer-sale' is already taken."
+
+    RateLimited:
+      description: >
+        The caller's IP has exceeded 60 redirect requests in 60 seconds (BR-003).
+        Includes Retry-After header indicating when requests will be accepted again.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds until the rate-limit window resets.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "RATE_LIMITED"
+            message: "Too many requests. Please try again in 60 seconds."
+
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred."

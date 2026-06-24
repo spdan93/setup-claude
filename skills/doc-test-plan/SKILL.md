@@ -107,6 +107,8 @@ Report the exact path to the user when done.
 3. Users add custom templates by dropping files into skills/doc-test-plan/templates/.
 ```
 
+**Examples:** `examples/` holds a filled reference per template (`examples/<template-basename>.example.<ext>`). Consult the matching example for depth/tone while filling; you may show it alongside the template when the user is choosing.
+
 ## Quality gate
 
 Before reporting the document as complete, verify each item:
