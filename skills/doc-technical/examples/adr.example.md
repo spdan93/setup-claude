@@ -1,6 +1,6 @@
 # ADR: Uso de Codificação de Contador em Base62 para Short Codes
 
-## Status
+## Situação
 
 Aceito
 
