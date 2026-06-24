@@ -145,7 +145,7 @@ Extract `type` and `scope` from the commit title (e.g. `feat(auth)` → type=`fe
 
 **7b. Build the slug**
 
-Convert the commit title to kebab-case, strip special characters, truncate to ≤50 characters.
+Strip the `type(scope):` prefix from the commit title first, then convert the remaining title to kebab-case (≤50 chars), stripping special characters.
 Example: `feat(auth): add refresh-token rotation` → `add-refresh-token-rotation`.
 
 **7c. Fill the template**
@@ -186,19 +186,17 @@ issue: <ISSUE-ID|null>
 <- one bullet per changed file path>
 ```
 
-**7d. Write and stage the entry**
+**7d. Write the entry**
 
 ```bash
-# Write the filled entry
+# Compute the target path — the LLM then writes the filled template to this file
+# using its file-write tool (Write), not a shell heredoc.
 # Path follows the convention: docs/changelog/YYYY_MM_DD-HHMM-{slug}.md
 CHANGELOG_FILE="docs/changelog/${STAMP}-${slug}.md"
-# (write the filled template content to $CHANGELOG_FILE)
-
-# Stage the changelog file along with any other staged changes
-git add -A
+# (use the Write tool to write the filled template content to $CHANGELOG_FILE)
 ```
 
-The changelog file must be staged so it is included in the commit it describes.
+The `$VAR` names (STAMP, slug, etc.) are computed via the bash shown in 7a–7b; the final file content is written with the Write tool to `docs/changelog/${STAMP}-${slug}.md`. Do NOT run `git add` here — the commit step (section 8) stages everything, including this just-written changelog file, with its own `git add -A`.
 
 **7e. (Optional) Update the index**
 
@@ -220,7 +218,7 @@ Execute in order:
 # 1. Check current branch (for logging only, DO NOT change)
 git branch --show-current
 
-# 2. Add all modified files (changelog entry already staged in step 7)
+# 2. Stage all modified files, including the changelog file written in step 7d
 git add -A
 
 # 3. Create commit with structured message (include [<ISSUE-ID>] if provided)
