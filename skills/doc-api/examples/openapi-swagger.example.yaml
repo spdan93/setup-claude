@@ -1,14 +1,14 @@
-# Example: fully-filled OpenAPI 3.0.3 spec for the URL Shortener Service.
-# Use this as a depth/tone reference when filling the openapi-swagger.yaml template.
+# Exemplo: spec OpenAPI 3.0.3 completamente preenchida para o Serviço de Encurtamento de URLs.
+# Use como referência de profundidade e tom ao preencher o template openapi-swagger.yaml.
 
 openapi: 3.0.3
 
 info:
-  title: "URL Shortener API"
+  title: "API de Encurtamento de URLs"
   description: >
-    Internal service that converts long URLs into short, shareable links, handles
-    redirects, and tracks click events. Consumed by the marketing portal (Operator UI)
-    and browser clients following short links (Visitors).
+    Serviço interno que converte URLs longas em links curtos e compartilháveis, realiza
+    redirecionamentos e rastreia eventos de clique. Consumido pelo portal de marketing (UI do Operador)
+    e por clientes browser que seguem links curtos (Visitantes).
   version: "1.0.0"
   contact:
     name: "Platform Team"
@@ -16,7 +16,7 @@ info:
 
 servers:
   - url: "https://api.sho.rt/v1"
-    description: Production
+    description: Produção
   - url: "https://staging-api.sho.rt/v1"
     description: Staging
 
@@ -25,17 +25,17 @@ security:
 
 tags:
   - name: Links
-    description: Create, read, update, and manage short links.
+    description: Criar, consultar, atualizar e gerenciar links curtos.
   - name: Redirect
-    description: Public redirect endpoint (no auth required).
+    description: Endpoint público de redirecionamento (sem autenticação necessária).
   - name: Stats
-    description: Click analytics for short links.
+    description: Analytics de cliques para links curtos.
 
 paths:
   /links:
     get:
-      summary: List links
-      description: Returns a paginated list of short links owned by the authenticated Operator.
+      summary: Listar links
+      description: Retorna uma lista paginada de links curtos pertencentes ao Operador autenticado.
       operationId: listLinks
       tags:
         - Links
@@ -49,7 +49,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
-          description: Page number (1-based).
+          description: Número da página (base 1).
         - name: limit
           in: query
           required: false
@@ -58,16 +58,16 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
-          description: Items per page.
+          description: Itens por página.
         - name: active
           in: query
           required: false
           schema:
             type: boolean
-          description: Filter by active status. Omit to return all links.
+          description: Filtrar por status ativo. Omita para retornar todos os links.
       responses:
         "200":
-          description: Paginated list of links.
+          description: Lista paginada de links.
           content:
             application/json:
               schema:
@@ -78,11 +78,11 @@ paths:
           $ref: "#/components/responses/InternalError"
 
     post:
-      summary: Create a short link
+      summary: Criar um link curto
       description: >
-        Creates a new short link for the given destination URL. Optionally accepts a
-        custom alias and an expiry date-time. The destination URL must use http or https
-        (BR-004). If an alias is supplied it must be globally unique (BR-002).
+        Cria um novo link curto para a URL de destino fornecida. Aceita opcionalmente um
+        alias customizado e uma data de expiração. A URL de destino deve usar http ou https
+        (BR-004). Se um alias for fornecido, deve ser globalmente único (BR-002).
       operationId: createLink
       tags:
         - Links
@@ -100,7 +100,7 @@ paths:
               expiresAt: "2026-09-01T00:00:00Z"
       responses:
         "201":
-          description: Short link created successfully.
+          description: Link curto criado com sucesso.
           content:
             application/json:
               schema:
@@ -123,11 +123,11 @@ paths:
         required: true
         schema:
           type: string
-        description: Internal link ID (e.g. `lnk_01j8kxzp3n`).
+        description: "ID interno do link (ex.: `lnk_01j8kxzp3n`)."
 
     get:
-      summary: Get a link
-      description: Returns the full details of a single short link by its internal ID.
+      summary: Obter um link
+      description: Retorna os detalhes completos de um único link curto pelo seu ID interno.
       operationId: getLink
       tags:
         - Links
@@ -135,7 +135,7 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          description: The requested link.
+          description: O link solicitado.
           content:
             application/json:
               schema:
@@ -150,10 +150,10 @@ paths:
           $ref: "#/components/responses/InternalError"
 
     patch:
-      summary: Update a link
+      summary: Atualizar um link
       description: >
-        Partially updates a short link. Supports changing destinationUrl, expiresAt,
-        and active status. The shortCode is immutable after creation.
+        Atualiza parcialmente um link curto. Suporta alteração de destinationUrl, expiresAt
+        e status ativo. O shortCode é imutável após a criação.
       operationId: updateLink
       tags:
         - Links
@@ -170,7 +170,7 @@ paths:
               active: true
       responses:
         "200":
-          description: Link updated successfully.
+          description: Link atualizado com sucesso.
           content:
             application/json:
               schema:
@@ -193,11 +193,11 @@ paths:
         required: true
         schema:
           type: string
-        description: Internal link ID.
+        description: ID interno do link.
 
     get:
-      summary: Get link click stats
-      description: Returns total click count and a per-day breakdown for the specified date range.
+      summary: Obter estatísticas de cliques do link
+      description: Retorna a contagem total de cliques e um detalhamento por dia para o intervalo de datas especificado.
       operationId: getLinkStats
       tags:
         - Stats
@@ -210,17 +210,17 @@ paths:
           schema:
             type: string
             format: date
-          description: Start date (inclusive), format YYYY-MM-DD. Defaults to 30 days ago.
+          description: "Data de início (inclusiva), formato YYYY-MM-DD. Padrão: 30 dias atrás."
         - name: to
           in: query
           required: false
           schema:
             type: string
             format: date
-          description: End date (inclusive), format YYYY-MM-DD. Defaults to today.
+          description: "Data de fim (inclusiva), formato YYYY-MM-DD. Padrão: hoje."
       responses:
         "200":
-          description: Click statistics for the link.
+          description: Estatísticas de cliques do link.
           content:
             application/json:
               schema:
@@ -243,28 +243,28 @@ paths:
         required: true
         schema:
           type: string
-        description: The short code or custom alias (e.g. `summer-sale`, `aB3x9`).
+        description: "O short code ou alias customizado (ex.: `summer-sale`, `aB3x9`)."
 
     get:
-      summary: Follow a short link (redirect)
+      summary: Seguir um link curto (redirect)
       description: >
-        Public endpoint. Looks up the short code and redirects the caller to the
-        destination URL (302 Found). Returns 410 if the link is expired (BR-001) or
-        deactivated (BR-005), 404 if the code does not exist, and 429 if the caller's
-        IP is rate-limited (BR-003).
+        Endpoint público. Busca o short code e redireciona o chamador para a
+        URL de destino (302 Found). Retorna 410 se o link estiver expirado (BR-001) ou
+        desativado (BR-005), 404 se o código não existir, e 429 se o IP do chamador
+        estiver sob rate limit (BR-003).
       operationId: redirectLink
       tags:
         - Redirect
       security: []
       responses:
         "302":
-          description: Redirect to the destination URL.
+          description: Redirecionamento para a URL de destino.
           headers:
             Location:
               schema:
                 type: string
                 format: uri
-              description: The destination URL.
+              description: A URL de destino.
         "404":
           $ref: "#/components/responses/NotFound"
         "410":
@@ -363,11 +363,11 @@ components:
         destinationUrl:
           type: string
           format: uri
-          description: The long URL to redirect to. Must use http or https.
+          description: A URL longa para redirecionar. Deve usar http ou https.
           example: "https://marketing.example.com/campaigns/summer-2026?utm_source=email"
         alias:
           type: string
-          description: Custom short code. 3–50 characters, pattern [a-zA-Z0-9_-]. Must be globally unique.
+          description: Short code customizado. 3–50 caracteres, padrão [a-zA-Z0-9_-]. Deve ser globalmente único.
           minLength: 3
           maxLength: 50
           pattern: "^[a-zA-Z0-9_-]+$"
@@ -375,7 +375,7 @@ components:
         expiresAt:
           type: string
           format: date-time
-          description: ISO 8601 UTC expiry date-time. Must be in the future.
+          description: Data e hora de expiração UTC no formato ISO 8601. Deve ser no futuro.
           nullable: true
           example: "2026-09-01T00:00:00Z"
 
@@ -385,17 +385,17 @@ components:
         destinationUrl:
           type: string
           format: uri
-          description: New destination URL. Must use http or https.
+          description: Nova URL de destino. Deve usar http ou https.
           example: "https://marketing.example.com/campaigns/summer-2026-v2?utm_source=email"
         expiresAt:
           type: string
           format: date-time
           nullable: true
-          description: New expiry date-time. Pass null to remove expiry.
+          description: Nova data e hora de expiração. Passe null para remover a expiração.
           example: "2026-09-01T00:00:00Z"
         active:
           type: boolean
-          description: Set to true to reactivate, false to deactivate.
+          description: Defina como true para reativar, false para desativar.
           example: true
 
     LinkStats:
@@ -451,47 +451,47 @@ components:
 
   responses:
     Unauthorized:
-      description: Missing or expired Bearer token.
+      description: Bearer token ausente ou expirado.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: "UNAUTHORIZED"
-            message: "Bearer token is missing or has expired."
+            message: "Bearer token ausente ou expirado."
 
     Forbidden:
-      description: Token lacks the required scope, or the resource belongs to another Operator.
+      description: Token não possui o scope necessário, ou o recurso pertence a outro Operador.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: "FORBIDDEN"
-            message: "You do not have permission to access this link."
+            message: "Você não tem permissão para acessar este link."
 
     NotFound:
-      description: The short code or link ID does not exist.
+      description: O short code ou ID do link não existe.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: "LINK_NOT_FOUND"
-            message: "Link not found."
+            message: "Link não encontrado."
 
     Gone:
-      description: The link exists but is expired (BR-001) or deactivated (BR-005).
+      description: O link existe, mas está expirado (BR-001) ou desativado (BR-005).
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: "LINK_EXPIRED"
-            message: "This link has expired."
+            message: "Este link expirou."
 
     ValidationError:
-      description: Request body or query parameter failed validation.
+      description: Corpo da requisição ou parâmetro de query falhou na validação.
       content:
         application/json:
           schema:
@@ -501,38 +501,38 @@ components:
             message: "destinationUrl must use http or https scheme."
 
     AliasTaken:
-      description: The provided alias is already in use (BR-002).
+      description: O alias fornecido já está em uso (BR-002).
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: "ALIAS_TAKEN"
-            message: "The alias 'summer-sale' is already taken."
+            message: "O alias 'summer-sale' já está em uso."
 
     RateLimited:
       description: >
-        The caller's IP has exceeded 60 redirect requests in 60 seconds (BR-003).
-        Includes Retry-After header indicating when requests will be accepted again.
+        O IP do chamador excedeu 60 requisições de redirecionamento em 60 segundos (BR-003).
+        Inclui o header Retry-After indicando quando as requisições serão aceitas novamente.
       headers:
         Retry-After:
           schema:
             type: integer
-          description: Seconds until the rate-limit window resets.
+          description: Segundos até a janela de rate limit ser reiniciada.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: "RATE_LIMITED"
-            message: "Too many requests. Please try again in 60 seconds."
+            message: "Muitas requisições. Tente novamente em 60 segundos."
 
     InternalError:
-      description: Unexpected server error.
+      description: Erro inesperado no servidor.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
           example:
             code: "INTERNAL_ERROR"
-            message: "An unexpected error occurred."
+            message: "Ocorreu um erro inesperado."

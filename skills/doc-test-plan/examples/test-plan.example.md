@@ -1,85 +1,85 @@
-<!-- Example: fully-filled test plan for the URL Shortener Service. Use this as a depth/tone reference when filling the test-plan.md template. -->
+<!-- Exemplo: plano de testes completamente preenchido para o Serviço de Encurtamento de URLs. Use como referência de profundidade e tom ao preencher o template test-plan.md. -->
 
-# Test Plan: URL Shortener — Core Link Lifecycle
+# Plano de Testes: Encurtador de URLs — Ciclo de Vida do Link
 
-**Date:** 2026-06-23
-**Author:** QA Lead
-**Status:** Approved
-
----
-
-## Scope
-
-- **Feature / flow under test:** End-to-end link lifecycle — create, redirect, deactivate, reactivate, and expiry; click-count tracking; rate limiting on redirects; custom alias uniqueness (BR-001 through BR-006).
-- **Target environments:** Staging (`https://staging.sho.rt`) — PostgreSQL backend, Redis rate-limit store.
-- **Related Implementation Plan:** `docs/plans/url-shortener-core.md`
+**Data:** 2026-06-23
+**Autor:** QA Lead
+**Status:** Aprovado
 
 ---
 
-## Preconditions / Test Data
+## Escopo
 
-| # | Precondition | Notes |
+- **Funcionalidade / fluxo sob teste:** Ciclo de vida completo do link — criar, redirecionar, desativar, reativar e expirar; rastreamento de contagem de cliques; rate limiting em redirecionamentos; unicidade de alias customizado (BR-001 a BR-006).
+- **Ambientes alvo:** Staging (`https://staging.sho.rt`) — backend PostgreSQL, Redis para controle de rate limit.
+- **Plano de Implementação relacionado:** `docs/plans/url-shortener-core.md`
+
+---
+
+## Pré-condições / Dados de Teste
+
+| # | Pré-condição | Observações |
 |---|---|---|
-| 1 | Staging environment is running and reachable at `https://staging.sho.rt` | Verified by `GET /health` returning `200 OK` |
-| 2 | At least two Operator accounts exist: `op-alice@example.com` (admin) and `op-bob@example.com` (standard) | Created via seed script `scripts/seed-test-users.sh` |
-| 3 | A valid Bearer token is obtained for `op-alice` via `POST /auth/token` | Token stored in env var `TEST_ALICE_TOKEN` |
-| 4 | The short code `existing-alias` already exists in the database, owned by `op-bob` | Seeded by `scripts/seed-test-links.sh` |
-| 5 | A link with `expiresAt` set to 2026-01-01T00:00:00Z exists with code `exp-link-01` | Seeded; its expiry is well in the past at test time |
-| 6 | Redis rate-limit counters for all test IPs are flushed before the rate-limit scenario | Run `redis-cli FLUSHDB` against the staging Redis instance |
+| 1 | Ambiente de staging em execução e acessível em `https://staging.sho.rt` | Verificado por `GET /health` retornando `200 OK` |
+| 2 | Pelo menos duas contas de Operador existem: `op-alice@example.com` (admin) e `op-bob@example.com` (padrão) | Criadas via script de seed `scripts/seed-test-users.sh` |
+| 3 | Um Bearer token válido foi obtido para `op-alice` via `POST /auth/token` | Token armazenado na variável de ambiente `TEST_ALICE_TOKEN` |
+| 4 | O short code `existing-alias` já existe no banco de dados, pertencente a `op-bob` | Inserido por `scripts/seed-test-links.sh` |
+| 5 | Um link com `expiresAt` definido para 2026-01-01T00:00:00Z existe com o código `exp-link-01` | Inserido; sua expiração já passou no momento dos testes |
+| 6 | Contadores de rate limit no Redis estão zerados para todos os IPs de teste antes do cenário de rate limit | Execute `redis-cli FLUSHDB` na instância Redis do staging |
 
 ---
 
-## Test Scenarios
+## Cenários de Teste
 
-| # | Scenario | Description |
+| # | Cenário | Descrição |
 |---|---|---|
-| S-01 | Happy path — create and redirect | Operator creates a short link; Visitor follows it and reaches the destination. |
-| S-02 | Custom alias — available | Operator provides a unique custom alias; system creates the link with that alias. |
-| S-03 | Custom alias — already taken | Operator provides an alias that already exists; system rejects with BR-002 error. |
-| S-04 | Link expiry | Visitor follows an expired link; system refuses redirect and shows expiry notice (BR-001). |
-| S-05 | Deactivate and reactivate | Operator deactivates a link; Visitor is blocked; Operator reactivates; Visitor is redirected again. |
-| S-06 | Rate limiting on redirect | Single IP makes 61 redirect requests in 60 s; request 61 is blocked with 429 (BR-003). |
-| S-07 | Invalid destination URL scheme | Operator attempts to create a link with a `javascript:` destination; system rejects (BR-004). |
-| S-08 | Click-count tracking | Click count increments within 30 s of a successful redirect (BR-006). |
-| S-09 | Non-existent short code | Visitor follows a code not in the system; system returns "Link not found". |
+| S-01 | Caminho feliz — criar e redirecionar | Operador cria um link curto; Visitante o acessa e chega ao destino. |
+| S-02 | Alias customizado — disponível | Operador fornece um alias único; o sistema cria o link com esse alias. |
+| S-03 | Alias customizado — já em uso | Operador fornece um alias que já existe; o sistema rejeita com erro BR-002. |
+| S-04 | Expiração do link | Visitante acessa um link expirado; o sistema recusa o redirecionamento e exibe aviso de expiração (BR-001). |
+| S-05 | Desativar e reativar | Operador desativa um link; Visitante é bloqueado; Operador reativa; Visitante é redirecionado novamente. |
+| S-06 | Rate limiting no redirecionamento | Um único IP faz 61 requisições de redirecionamento em 60 s; a requisição 61 é bloqueada com 429 (BR-003). |
+| S-07 | Scheme de URL de destino inválido | Operador tenta criar um link com destino `javascript:`; o sistema rejeita (BR-004). |
+| S-08 | Rastreamento de contagem de cliques | A contagem de cliques incrementa em até 30 s após um redirecionamento bem-sucedido (BR-006). |
+| S-09 | Short code inexistente | Visitante acessa um código não cadastrado no sistema; o sistema retorna "Link não encontrado". |
 
 ---
 
-## Test Cases
+## Casos de Teste
 
-| Case ID | Linked TC | Steps | Expected Result | Priority |
+| ID do Caso | TC vinculado | Passos | Resultado Esperado | Prioridade |
 |---|---|---|---|---|
-| TC-S01-01 | TC-1.1-01 | 1. `POST /links` with `{"destinationUrl":"https://example.com"}` and valid Bearer token. <br> 2. Note the `shortCode` in the `201` response. <br> 3. `GET /{shortCode}` without a Bearer token (browser-style). | Step 1 returns `201 Created` with `shortCode` and `shortUrl`. Step 3 returns `302 Found` with `Location: https://example.com`. | P1 |
-| TC-S01-02 | TC-1.1-02 | 1. `POST /links` with `{"destinationUrl":"https://example.com"}`. <br> 2. Note the `id` from the `201` response. <br> 3. `GET /links/{id}/stats` with valid Bearer token. | Stats response contains `{"clicks": 0, ...}` immediately after creation. | P2 |
-| TC-S02-01 | TC-1.2-01 | 1. `POST /links` with `{"destinationUrl":"https://example.com","alias":"summer-sale"}`. <br> 2. `GET /summer-sale` without a token. | Step 1 returns `201 Created` with `shortCode: "summer-sale"`. Step 2 returns `302 Found` with `Location: https://example.com`. | P1 |
-| TC-S03-01 | TC-1.2-02 | 1. `POST /links` with `{"destinationUrl":"https://other.example.com","alias":"existing-alias"}`. | Returns `422 Unprocessable Entity` with `{"code":"ALIAS_TAKEN","message":"The alias 'existing-alias' is already taken."}`. No new link is created. | P1 |
-| TC-S04-01 | TC-1.3-01 | 1. `GET /exp-link-01` without a token. | Returns `410 Gone` with body `{"code":"LINK_EXPIRED","message":"This link has expired."}`. No `Location` header is present. | P1 |
-| TC-S04-02 | TC-1.3-02 | 1. `POST /links` with `{"destinationUrl":"https://example.com","expiresAt":"2020-01-01T00:00:00Z"}`. | Returns `400 Bad Request` with `{"code":"VALIDATION_ERROR","message":"expiresAt must be a future date-time."}`. | P2 |
-| TC-S05-01 | TC-1.4-01 | 1. `POST /links` → note `id` and `shortCode` from the `201` response. <br> 2. `PATCH /links/{id}` with `{"active": false}` (deactivate). <br> 3. `GET /{shortCode}` without a token. | Step 2 returns `200 OK` with `{"active":false}`. Step 3 returns `410 Gone` with `{"code":"LINK_UNAVAILABLE","message":"This link is unavailable."}`. | P1 |
-| TC-S05-02 | TC-1.4-02 | 1. Following TC-S05-01. <br> 2. `PATCH /links/{id}` with `{"active": true}` (reactivate). <br> 3. `GET /{shortCode}` without a token. | Step 2 returns `200 OK` with `{"active":true}`. Step 3 returns `302 Found` with correct `Location`. Click count from before deactivation is preserved. | P1 |
-| TC-S06-01 | TC-1.5-01 | 1. Send 60 `GET /{validCode}` requests from the same IP within 60 s. <br> 2. Send request 61 within the same window. | Requests 1–60 return `302 Found`. Request 61 returns `429 Too Many Requests` with `Retry-After: 60` header. | P1 |
-| TC-S07-01 | TC-1.6-01 | 1. `POST /links` with `{"destinationUrl":"javascript:alert(1)"}`. | Returns `400 Bad Request` with `{"code":"VALIDATION_ERROR","message":"destinationUrl must use http or https scheme."}`. | P1 |
-| TC-S07-02 | TC-1.6-02 | 1. `POST /links` with `{"destinationUrl":"ftp://files.example.com/report.pdf"}`. | Returns `400 Bad Request` with `{"code":"VALIDATION_ERROR","message":"destinationUrl must use http or https scheme."}`. | P2 |
-| TC-S08-01 | TC-1.7-01 | 1. `GET /links/{code}/stats` → note `clicks` value. <br> 2. `GET /{code}` (follow the link). <br> 3. Wait 30 s. <br> 4. `GET /links/{code}/stats` again. | Click count in step 4 is exactly `clicks + 1`. | P1 |
-| TC-S09-01 | TC-1.8-01 | 1. `GET /does-not-exist-xyz` without a token. | Returns `404 Not Found` with `{"code":"LINK_NOT_FOUND","message":"Link not found."}`. | P1 |
-| TC-S09-02 | TC-1.8-02 | 1. `GET /` (root path with no code). | Returns `404 Not Found` or `400 Bad Request`; no unhandled exception or 500. | P3 |
+| TC-S01-01 | TC-1.1-01 | 1. `POST /links` com `{"destinationUrl":"https://example.com"}` e Bearer token válido. <br> 2. Anote o `shortCode` na resposta `201`. <br> 3. `GET /{shortCode}` sem Bearer token (estilo browser). | Passo 1 retorna `201 Created` com `shortCode` e `shortUrl`. Passo 3 retorna `302 Found` com `Location: https://example.com`. | P1 |
+| TC-S01-02 | TC-1.1-02 | 1. `POST /links` com `{"destinationUrl":"https://example.com"}`. <br> 2. Anote o `id` da resposta `201`. <br> 3. `GET /links/{id}/stats` com Bearer token válido. | Resposta de stats contém `{"clicks": 0, ...}` imediatamente após a criação. | P2 |
+| TC-S02-01 | TC-1.2-01 | 1. `POST /links` com `{"destinationUrl":"https://example.com","alias":"summer-sale"}`. <br> 2. `GET /summer-sale` sem token. | Passo 1 retorna `201 Created` com `shortCode: "summer-sale"`. Passo 2 retorna `302 Found` com `Location: https://example.com`. | P1 |
+| TC-S03-01 | TC-1.2-02 | 1. `POST /links` com `{"destinationUrl":"https://other.example.com","alias":"existing-alias"}`. | Retorna `422 Unprocessable Entity` com `{"code":"ALIAS_TAKEN","message":"The alias 'existing-alias' is already taken."}`. Nenhum novo link é criado. | P1 |
+| TC-S04-01 | TC-1.3-01 | 1. `GET /exp-link-01` sem token. | Retorna `410 Gone` com corpo `{"code":"LINK_EXPIRED","message":"This link has expired."}`. Nenhum header `Location` está presente. | P1 |
+| TC-S04-02 | TC-1.3-02 | 1. `POST /links` com `{"destinationUrl":"https://example.com","expiresAt":"2020-01-01T00:00:00Z"}`. | Retorna `400 Bad Request` com `{"code":"VALIDATION_ERROR","message":"expiresAt must be a future date-time."}`. | P2 |
+| TC-S05-01 | TC-1.4-01 | 1. `POST /links` → anote `id` e `shortCode` da resposta `201`. <br> 2. `PATCH /links/{id}` com `{"active": false}` (desativar). <br> 3. `GET /{shortCode}` sem token. | Passo 2 retorna `200 OK` com `{"active":false}`. Passo 3 retorna `410 Gone` com `{"code":"LINK_UNAVAILABLE","message":"This link is unavailable."}`. | P1 |
+| TC-S05-02 | TC-1.4-02 | 1. Continuando de TC-S05-01. <br> 2. `PATCH /links/{id}` com `{"active": true}` (reativar). <br> 3. `GET /{shortCode}` sem token. | Passo 2 retorna `200 OK` com `{"active":true}`. Passo 3 retorna `302 Found` com `Location` correto. A contagem de cliques anterior à desativação é preservada. | P1 |
+| TC-S06-01 | TC-1.5-01 | 1. Envie 60 requisições `GET /{validCode}` do mesmo IP em 60 s. <br> 2. Envie a requisição 61 dentro da mesma janela. | Requisições 1–60 retornam `302 Found`. Requisição 61 retorna `429 Too Many Requests` com header `Retry-After: 60`. | P1 |
+| TC-S07-01 | TC-1.6-01 | 1. `POST /links` com `{"destinationUrl":"javascript:alert(1)"}`. | Retorna `400 Bad Request` com `{"code":"VALIDATION_ERROR","message":"destinationUrl must use http or https scheme."}`. | P1 |
+| TC-S07-02 | TC-1.6-02 | 1. `POST /links` com `{"destinationUrl":"ftp://files.example.com/report.pdf"}`. | Retorna `400 Bad Request` com `{"code":"VALIDATION_ERROR","message":"destinationUrl must use http or https scheme."}`. | P2 |
+| TC-S08-01 | TC-1.7-01 | 1. `GET /links/{code}/stats` → anote o valor de `clicks`. <br> 2. `GET /{code}` (seguir o link). <br> 3. Aguarde 30 s. <br> 4. `GET /links/{code}/stats` novamente. | A contagem de cliques no passo 4 é exatamente `clicks + 1`. | P1 |
+| TC-S09-01 | TC-1.8-01 | 1. `GET /does-not-exist-xyz` sem token. | Retorna `404 Not Found` com `{"code":"LINK_NOT_FOUND","message":"Link not found."}`. | P1 |
+| TC-S09-02 | TC-1.8-02 | 1. `GET /` (caminho raiz sem código). | Retorna `404 Not Found` ou `400 Bad Request`; sem exceção não tratada ou erro 500. | P3 |
 
 ---
 
-## Out of Scope
+## Fora do Escopo
 
-- Performance and load testing (separate load-test plan required; Locust suite is pending).
-- Auth0 / identity-provider UI flows — only the Bearer token obtained after login is exercised here.
-- Visitor-facing front-end UI rendering beyond HTTP status codes and response bodies.
-- Email-notification integrations for link-expiry alerts (not yet implemented).
-- Browser compatibility and visual regression testing.
+- Testes de performance e carga (plano de carga separado necessário; suite Locust pendente).
+- Fluxos de UI do Auth0 / provedor de identidade — apenas o Bearer token obtido após o login é exercitado aqui.
+- Renderização de UI front-end para Visitantes, além de status HTTP e corpos de resposta.
+- Integrações de notificação por e-mail para alertas de expiração de links (ainda não implementado).
+- Testes de compatibilidade de browser e regressão visual.
 
 ---
 
-## Sign-off
+## Aprovação
 
-| Role | Name | Date | Status |
+| Papel | Nome | Data | Status |
 |---|---|---|---|
-| Author | QA Lead | 2026-06-23 | Approved |
-| Reviewer | Engineering Lead | 2026-06-23 | Approved |
-| Approver | Product Owner | 2026-06-23 | Approved |
+| Autor | QA Lead | 2026-06-23 | Aprovado |
+| Revisor | Engineering Lead | 2026-06-23 | Aprovado |
+| Aprovador | Product Owner | 2026-06-23 | Aprovado |

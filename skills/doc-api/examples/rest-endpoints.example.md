@@ -1,29 +1,29 @@
-<!-- Example: fully-filled REST endpoint reference for the URL Shortener Service. Use this as a depth/tone reference when filling the rest-endpoints.md template. -->
+<!-- Exemplo: referência de endpoints REST completamente preenchida para o Serviço de Encurtamento de URLs. Use como referência de profundidade e tom ao preencher o template rest-endpoints.md. -->
 
-# API Reference: URL Shortener — Links
+# Referência de API: Encurtador de URLs — Links
 
-> **Base URL:** `https://api.sho.rt/v1`
-> **Auth:** Bearer token required on all management endpoints. The redirect endpoint (`GET /{code}`) is public.
+> **URL Base:** `https://api.sho.rt/v1`
+> **Auth:** Bearer token obrigatório em todos os endpoints de gerenciamento. O endpoint de redirecionamento (`GET /{code}`) é público.
 
 ---
 
 ### POST /links
 
-Creates a new short link. Returns the generated (or custom) short code and the fully-qualified short URL. The destination URL must use the `http` or `https` scheme (BR-004). If a custom `alias` is provided it must not already be in use (BR-002).
+Cria um novo link curto. Retorna o short code gerado (ou customizado) e a URL curta completa. A URL de destino deve usar o scheme `http` ou `https` (BR-004). Se um `alias` customizado for fornecido, ele não pode já estar em uso (BR-002).
 
-**Authentication:** Bearer `<token>` — requires scope `links:write`
+**Autenticação:** Bearer `<token>` — requer scope `links:write`
 
-**Path parameters:** none
+**Parâmetros de path:** nenhum
 
-**Query parameters:** none
+**Parâmetros de query:** nenhum
 
-**Request body** (`application/json`)**:**
+**Corpo da requisição** (`application/json`)**:**
 
-| Field | Type | Required | Description |
+| Campo | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `destinationUrl` | string (URL) | yes | The long URL to redirect to. Must use `http` or `https`. |
-| `alias` | string | no | Custom short code (e.g. `summer-sale`). 3–50 characters, `[a-zA-Z0-9_-]`. Must be globally unique. |
-| `expiresAt` | string (date-time) | no | ISO 8601 UTC date-time after which the link stops redirecting. Must be in the future. |
+| `destinationUrl` | string (URL) | sim | A URL longa para redirecionar. Deve usar `http` ou `https`. |
+| `alias` | string | não | Short code customizado (ex.: `summer-sale`). 3–50 caracteres, `[a-zA-Z0-9_-]`. Deve ser globalmente único. |
+| `expiresAt` | string (date-time) | não | Data e hora UTC no formato ISO 8601 após a qual o link para de redirecionar. Deve ser no futuro. |
 
 ```json
 {
@@ -33,7 +33,7 @@ Creates a new short link. Returns the generated (or custom) short code and the f
 }
 ```
 
-**Response — 201 Created**
+**Resposta — 201 Created**
 
 ```json
 {
@@ -47,74 +47,74 @@ Creates a new short link. Returns the generated (or custom) short code and the f
 }
 ```
 
-**Errors:**
+**Erros:**
 
-| Status | Code | When |
+| Status | Código | Quando |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | `destinationUrl` is missing, malformed, or uses a forbidden scheme (`ftp`, `javascript`, etc.); `expiresAt` is in the past; `alias` contains invalid characters. |
-| 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
-| 403 | `FORBIDDEN` | Token lacks `links:write` scope. |
-| 422 | `ALIAS_TAKEN` | The provided `alias` is already in use by another link (active or deactivated). |
-| 500 | `INTERNAL_ERROR` | Unexpected server error. |
+| 400 | `VALIDATION_ERROR` | `destinationUrl` está ausente, malformado ou usa um scheme proibido (`ftp`, `javascript`, etc.); `expiresAt` está no passado; `alias` contém caracteres inválidos. |
+| 401 | `UNAUTHORIZED` | Bearer token ausente ou expirado. |
+| 403 | `FORBIDDEN` | Token não possui o scope `links:write`. |
+| 422 | `ALIAS_TAKEN` | O `alias` fornecido já está em uso por outro link (ativo ou desativado). |
+| 500 | `INTERNAL_ERROR` | Erro inesperado no servidor. |
 
 ---
 
 ### GET /{code}
 
-Redirects the caller to the destination URL associated with the short code. This endpoint is public (no authentication required). Returns `302 Found` on success. If the link is expired (BR-001), deactivated (BR-005), or unknown, returns an appropriate non-redirect response.
+Redireciona o chamador para a URL de destino associada ao short code. Este endpoint é público (sem autenticação necessária). Retorna `302 Found` em caso de sucesso. Se o link estiver expirado (BR-001), desativado (BR-005) ou inexistente, retorna uma resposta de não-redirecionamento adequada.
 
-**Authentication:** none
+**Autenticação:** nenhuma
 
-**Path parameters:**
+**Parâmetros de path:**
 
-| Name | Type | Required | Description |
+| Nome | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `code` | string | yes | The short code or custom alias (e.g. `summer-sale`, `aB3x9`). |
+| `code` | string | sim | O short code ou alias customizado (ex.: `summer-sale`, `aB3x9`). |
 
-**Query parameters:** none
+**Parâmetros de query:** nenhum
 
-**Request body:** none
+**Corpo da requisição:** nenhum
 
-**Response — 302 Found**
+**Resposta — 302 Found**
 
-Empty body. The `Location` header contains the destination URL.
+Corpo vazio. O header `Location` contém a URL de destino.
 
 ```
 HTTP/1.1 302 Found
 Location: https://marketing.example.com/campaigns/summer-2026?utm_source=email
 ```
 
-**Errors:**
+**Erros:**
 
-| Status | Code | When |
+| Status | Código | Quando |
 |---|---|---|
-| 404 | `LINK_NOT_FOUND` | No link with the given `code` exists in the system. |
-| 410 | `LINK_EXPIRED` | The link exists but its `expiresAt` date has passed (BR-001). |
-| 410 | `LINK_UNAVAILABLE` | The link exists but has been deactivated by the Operator (BR-005). |
-| 429 | `RATE_LIMITED` | The caller's IP has exceeded 60 redirect requests in 60 seconds (BR-003). Includes `Retry-After: 60` header. |
-| 500 | `INTERNAL_ERROR` | Unexpected server error. |
+| 404 | `LINK_NOT_FOUND` | Nenhum link com o `code` fornecido existe no sistema. |
+| 410 | `LINK_EXPIRED` | O link existe, mas sua data `expiresAt` já passou (BR-001). |
+| 410 | `LINK_UNAVAILABLE` | O link existe, mas foi desativado pelo Operador (BR-005). |
+| 429 | `RATE_LIMITED` | O IP do chamador excedeu 60 requisições de redirecionamento em 60 segundos (BR-003). Inclui o header `Retry-After: 60`. |
+| 500 | `INTERNAL_ERROR` | Erro inesperado no servidor. |
 
 ---
 
 ### GET /links
 
-Returns a paginated list of short links owned by the authenticated Operator.
+Retorna uma lista paginada de links curtos pertencentes ao Operador autenticado.
 
-**Authentication:** Bearer `<token>` — requires scope `links:read`
+**Autenticação:** Bearer `<token>` — requer scope `links:read`
 
-**Path parameters:** none
+**Parâmetros de path:** nenhum
 
-**Query parameters:**
+**Parâmetros de query:**
 
-| Name | Type | Required | Default | Description |
+| Nome | Tipo | Obrigatório | Padrão | Descrição |
 |---|---|---|---|---|
-| `page` | integer | no | 1 | Page number (1-based). |
-| `limit` | integer | no | 20 | Items per page. Maximum 100. |
-| `active` | boolean | no | — | Filter by active status. Omit to return all. |
+| `page` | integer | não | 1 | Número da página (base 1). |
+| `limit` | integer | não | 20 | Itens por página. Máximo 100. |
+| `active` | boolean | não | — | Filtrar por status ativo. Omita para retornar todos. |
 
-**Request body:** none
+**Corpo da requisição:** nenhum
 
-**Response — 200 OK**
+**Resposta — 200 OK**
 
 ```json
 {
@@ -138,33 +138,33 @@ Returns a paginated list of short links owned by the authenticated Operator.
 }
 ```
 
-**Errors:**
+**Erros:**
 
-| Status | Code | When |
+| Status | Código | Quando |
 |---|---|---|
-| 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
-| 403 | `FORBIDDEN` | Token lacks `links:read` scope. |
-| 500 | `INTERNAL_ERROR` | Unexpected server error. |
+| 401 | `UNAUTHORIZED` | Bearer token ausente ou expirado. |
+| 403 | `FORBIDDEN` | Token não possui o scope `links:read`. |
+| 500 | `INTERNAL_ERROR` | Erro inesperado no servidor. |
 
 ---
 
 ### GET /links/{id}
 
-Returns the full details of a single short link by its internal ID.
+Retorna os detalhes completos de um único link curto pelo seu ID interno.
 
-**Authentication:** Bearer `<token>` — requires scope `links:read`
+**Autenticação:** Bearer `<token>` — requer scope `links:read`
 
-**Path parameters:**
+**Parâmetros de path:**
 
-| Name | Type | Required | Description |
+| Nome | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `id` | string | yes | Internal link ID (e.g. `lnk_01j8kxzp3n`). |
+| `id` | string | sim | ID interno do link (ex.: `lnk_01j8kxzp3n`). |
 
-**Query parameters:** none
+**Parâmetros de query:** nenhum
 
-**Request body:** none
+**Corpo da requisição:** nenhum
 
-**Response — 200 OK**
+**Resposta — 200 OK**
 
 ```json
 {
@@ -180,38 +180,38 @@ Returns the full details of a single short link by its internal ID.
 }
 ```
 
-**Errors:**
+**Erros:**
 
-| Status | Code | When |
+| Status | Código | Quando |
 |---|---|---|
-| 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
-| 403 | `FORBIDDEN` | Token lacks `links:read` scope, or the link belongs to another Operator. |
-| 404 | `LINK_NOT_FOUND` | No link with the given `id` exists. |
-| 500 | `INTERNAL_ERROR` | Unexpected server error. |
+| 401 | `UNAUTHORIZED` | Bearer token ausente ou expirado. |
+| 403 | `FORBIDDEN` | Token não possui o scope `links:read`, ou o link pertence a outro Operador. |
+| 404 | `LINK_NOT_FOUND` | Nenhum link com o `id` fornecido existe. |
+| 500 | `INTERNAL_ERROR` | Erro inesperado no servidor. |
 
 ---
 
 ### PATCH /links/{id}
 
-Partially updates a short link. Supports changing the destination URL, expiry date, or active status. The `shortCode` and `alias` are immutable after creation.
+Atualiza parcialmente um link curto. Suporta alteração da URL de destino, data de expiração ou status ativo. O `shortCode` e o `alias` são imutáveis após a criação.
 
-**Authentication:** Bearer `<token>` — requires scope `links:write`
+**Autenticação:** Bearer `<token>` — requer scope `links:write`
 
-**Path parameters:**
+**Parâmetros de path:**
 
-| Name | Type | Required | Description |
+| Nome | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `id` | string | yes | Internal link ID. |
+| `id` | string | sim | ID interno do link. |
 
-**Query parameters:** none
+**Parâmetros de query:** nenhum
 
-**Request body** (`application/json`)**:**
+**Corpo da requisição** (`application/json`)**:**
 
-| Field | Type | Required | Description |
+| Campo | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `destinationUrl` | string (URL) | no | New destination URL. Must use `http` or `https`. |
-| `expiresAt` | string (date-time) | no | New expiry date-time in UTC. Pass `null` to remove expiry. |
-| `active` | boolean | no | `true` to reactivate, `false` to deactivate. |
+| `destinationUrl` | string (URL) | não | Nova URL de destino. Deve usar `http` ou `https`. |
+| `expiresAt` | string (date-time) | não | Nova data e hora de expiração em UTC. Passe `null` para remover a expiração. |
+| `active` | boolean | não | `true` para reativar, `false` para desativar. |
 
 ```json
 {
@@ -220,7 +220,7 @@ Partially updates a short link. Supports changing the destination URL, expiry da
 }
 ```
 
-**Response — 200 OK**
+**Resposta — 200 OK**
 
 ```json
 {
@@ -235,40 +235,40 @@ Partially updates a short link. Supports changing the destination URL, expiry da
 }
 ```
 
-**Errors:**
+**Erros:**
 
-| Status | Code | When |
+| Status | Código | Quando |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | `destinationUrl` uses a forbidden scheme; `expiresAt` is in the past. |
-| 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
-| 403 | `FORBIDDEN` | Token lacks `links:write` scope, or the link belongs to another Operator. |
-| 404 | `LINK_NOT_FOUND` | No link with the given `id` exists. |
-| 500 | `INTERNAL_ERROR` | Unexpected server error. |
+| 400 | `VALIDATION_ERROR` | `destinationUrl` usa um scheme proibido; `expiresAt` está no passado. |
+| 401 | `UNAUTHORIZED` | Bearer token ausente ou expirado. |
+| 403 | `FORBIDDEN` | Token não possui o scope `links:write`, ou o link pertence a outro Operador. |
+| 404 | `LINK_NOT_FOUND` | Nenhum link com o `id` fornecido existe. |
+| 500 | `INTERNAL_ERROR` | Erro inesperado no servidor. |
 
 ---
 
 ### GET /links/{id}/stats
 
-Returns click statistics for a single short link.
+Retorna estatísticas de cliques de um único link curto.
 
-**Authentication:** Bearer `<token>` — requires scope `links:read`
+**Autenticação:** Bearer `<token>` — requer scope `links:read`
 
-**Path parameters:**
+**Parâmetros de path:**
 
-| Name | Type | Required | Description |
+| Nome | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| `id` | string | yes | Internal link ID. |
+| `id` | string | sim | ID interno do link. |
 
-**Query parameters:**
+**Parâmetros de query:**
 
-| Name | Type | Required | Default | Description |
+| Nome | Tipo | Obrigatório | Padrão | Descrição |
 |---|---|---|---|---|
-| `from` | string (date) | no | 30 days ago | Start date (inclusive) for click aggregation. Format: `YYYY-MM-DD`. |
-| `to` | string (date) | no | today | End date (inclusive). Format: `YYYY-MM-DD`. |
+| `from` | string (date) | não | 30 dias atrás | Data de início (inclusiva) para agregação de cliques. Formato: `YYYY-MM-DD`. |
+| `to` | string (date) | não | hoje | Data de fim (inclusiva). Formato: `YYYY-MM-DD`. |
 
-**Request body:** none
+**Corpo da requisição:** nenhum
 
-**Response — 200 OK**
+**Resposta — 200 OK**
 
 ```json
 {
@@ -283,12 +283,12 @@ Returns click statistics for a single short link.
 }
 ```
 
-**Errors:**
+**Erros:**
 
-| Status | Code | When |
+| Status | Código | Quando |
 |---|---|---|
-| 400 | `VALIDATION_ERROR` | `from` or `to` is not a valid date; `from` is after `to`. |
-| 401 | `UNAUTHORIZED` | Missing or expired Bearer token. |
-| 403 | `FORBIDDEN` | Token lacks `links:read` scope, or the link belongs to another Operator. |
-| 404 | `LINK_NOT_FOUND` | No link with the given `id` exists. |
-| 500 | `INTERNAL_ERROR` | Unexpected server error. |
+| 400 | `VALIDATION_ERROR` | `from` ou `to` não é uma data válida; `from` é posterior a `to`. |
+| 401 | `UNAUTHORIZED` | Bearer token ausente ou expirado. |
+| 403 | `FORBIDDEN` | Token não possui o scope `links:read`, ou o link pertence a outro Operador. |
+| 404 | `LINK_NOT_FOUND` | Nenhum link com o `id` fornecido existe. |
+| 500 | `INTERNAL_ERROR` | Erro inesperado no servidor. |
