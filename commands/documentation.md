@@ -28,7 +28,7 @@ Thin router: determines the doc type, then delegates to the matching skill.
 for d in skills/doc-*/; do [ -f "${d}SKILL.md" ] && echo "$d"; done
 ```
 
-Exclude `doc-changelog` (template-only; changelog is produced automatically by `/commit`, not here).
+(The `SKILL.md` test above naturally returns only real skills — the changelog is not a skill; it lives at `templates/changelog/` and is produced automatically by `/commit`.)
 
 For each directory returned by the glob above, read the `description:` field from its `SKILL.md` YAML frontmatter. The directories discovered by the glob are exactly the options presented — each option's label is the type name (e.g. `technical`) and its description is the value read from that skill's `SKILL.md` at run time.
 

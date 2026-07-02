@@ -54,16 +54,15 @@ O kit inclui quatro tipos de documentação sob demanda, cada um como uma skill
 | Caderno de testes | `doc-test-plan` | `docs/test-plans/` |
 | API | `doc-api` | `docs/api/` |
 
-> `doc-changelog` é **somente template** (sem `SKILL.md`) — não aparece no `/documentation`
-> e não é invocada diretamente; o `/commit` a usa internamente.
+> O changelog **não** é uma skill: seu template fica em `templates/changelog/commit-entry.md`
+> (fora de `skills/`) e é usado internamente pelo `/commit`. Não aparece no `/documentation`.
 
 **Seleção de template**: cada skill lista seus templates disponíveis e seleciona o mais
 adequado com base na descrição/contexto fornecido pelo usuário.
 
 **Adicionar um novo tipo**: crie `skills/doc-<novo>/` com `SKILL.md` (frontmatter `name`/`description`)
 + `templates/` + `examples/` (um exemplo preenchido por template). O `/documentation`
-descobre automaticamente qualquer `skills/doc-*/SKILL.md` (exceto `doc-changelog`) e
-dispara pela descrição da tarefa.
+descobre automaticamente qualquer `skills/doc-*/SKILL.md` e dispara pela descrição da tarefa.
 
 ---
 

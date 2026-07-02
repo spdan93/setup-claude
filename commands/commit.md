@@ -152,7 +152,7 @@ Example: `feat(auth): add refresh-token rotation` → `add-refresh-token-rotatio
 
 **7c. Fill the template**
 
-Read `skills/doc-changelog/templates/commit-entry.md` and substitute every `{{placeholder}}` with the resolved value. If the template file is missing, use the inline format below as a fallback:
+Read `templates/changelog/commit-entry.md` and substitute every `{{placeholder}}` with the resolved value. If the template file is missing, use the inline format below as a fallback:
 
 ```markdown
 ---

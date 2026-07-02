@@ -231,11 +231,11 @@ Task(subagent_type="developer", prompt="Implementar task-2-1-abc do Plan docs/pl
 │   ├── doc-technical/              # documentação técnica (via /documentation)
 │   ├── doc-functional/             # documentação funcional (via /documentation)
 │   ├── doc-test-plan/              # cadernos de testes (via /documentation)
-│   ├── doc-api/                    # documentação de API (via /documentation)
-│   └── doc-changelog/              # template-only: usado internamente pelo /commit
+│   └── doc-api/                    # documentação de API (via /documentation)
 │
 ├── hooks/delete-2fa.sh     # Guarda de comandos destrutivos (2FA)
 ├── statusline/             # Statusline mac/linux/windows (nível de usuário)
+├── templates/changelog/    # template do changelog (usado pelo /commit — não é skill)
 ├── orchestrator/           # Dados internos do pipeline
 │   ├── config.json
 │   └── pipelines/{pipeline_id}/    # pipeline-state.json · dev-status.json
