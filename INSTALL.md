@@ -33,8 +33,17 @@ substituir (`[y/N]`). Em execução não-interativa (agente/CI) ele mantém a su
 segurança — use `FORCE_STATUSLINE=1` pra substituir sem perguntar.
 
 > **Variáveis**: `CLAUDE_CONFIG_DIR=<dir>` muda o destino de usuário (default `~/.claude`).
-> Windows: o instalador é bash (mac/linux); no Windows, copie a pasta e ligue o
-> `statusline-command-windows.ps1` manualmente (ver [statusline/README.md](statusline/README.md)).
+> **Windows**: use o instalador PowerShell (requer PowerShell 7+):
+>
+> ```powershell
+> pwsh -File C:\caminho\do\kit\install.ps1 .        # híbrido no repo atual
+> pwsh -File C:\caminho\do\kit\install.ps1 -Global  # tudo em ~/.claude (sem split)
+> ```
+>
+> O `install.ps1` espelha o `install.sh` (híbrido, idempotente, merge não-destrutivo do
+> `settings.json`, ask-before-replace da statusline, prune por manifest, version stamp).
+> Ressalva: o hook **delete-2FA é bash** — no Windows ele só dispara se houver um bash
+> (Git Bash) disponível pro Claude Code; o resto funciona sem bash.
 
 ---
 
@@ -160,7 +169,7 @@ branch padrão, etc.). Crie/edite o seu com:
 │   ├── technical/  functional/  test-plans/  api/   # documentação sob demanda
 │   └── test-evidence/
 └── .claude/                     # tooling local (gitignored)
-    ├── README.md INSTALL.md USAGE.md CONVENTIONS.md  install.sh
+    ├── README.md INSTALL.md USAGE.md CONVENTIONS.md  install.sh · install.ps1
     ├── settings.json            # hook delete-2FA
     ├── settings.local.json      # allowlist de permissões
     ├── agents/  commands/  skills/
