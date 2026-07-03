@@ -126,8 +126,12 @@ Opcional e não incluído. Sempre que um ID de issue aparecer, use o placeholder
   conteúdo para o usuário final.
 - **Changelog por commit** (`docs/changelog/`): escrito em pt-BR por padrão; não há
   prompt de idioma por commit.
-- **Mensagem de commit**: segue a convenção do projeto (detectar pelo histórico;
-  default inglês se incerto).
+- **PRD e Plan** (`prd-writer` / `plan-architect`): **conteúdo/prosa em pt-BR por padrão**
+  (en-US ou es só se o usuário pedir). Mas os **headings estruturais ficam em inglês
+  canônico** — são contrato lido por `developer`, `code-reviewer`, `/test-write` e
+  `checkpoint-validator` (ex.: `Test Cases (immutable)`, `Executive Summary`).
+- **Mensagem de commit**: segue a convenção do projeto (default inglês se incerto). É a
+  única saída que não é pt-BR por padrão; o changelog derivado dela, esse sim, é pt-BR.
 - **Headings de template** (PRD/Plan/meta-prompt): inglês canônico (lista acima).
 
 ---

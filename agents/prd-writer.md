@@ -92,7 +92,7 @@ epic: string (optional)
 - Set `status: "draft"` and `version: "1.0"` for new PRDs
 - Use `created` and `updated` with today's date (YYYY-MM-DD format)
 - Include section 1 (Context) and section 6 (Next Steps) at minimum
-- Follow the project's dominant language convention for content (detect from repo docs/commits; default to English if unclear); keep technical terms in English
+- Write the PRD **content/prose in pt-BR by default** (use en-US or es only if the user explicitly requests it). Keep the section **headings** in canonical English (they are read by `prd-reviewer` / `checkpoint-validator`) and keep technical terms in English.
 - Ground all decisions in discovered context (codebase patterns, existing docs)
 
 **NEVER**:
