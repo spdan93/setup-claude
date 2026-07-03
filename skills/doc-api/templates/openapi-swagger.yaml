@@ -1,0 +1,319 @@
+# Machine-readable OpenAPI 3.0.3 spec skeleton — fill in paths, schemas, and security from the real codebase.
+
+openapi: 3.0.3
+
+info:
+  title: "{Service Name} API"
+  description: One-paragraph description of what this API does and who consumes it.
+  version: "1.0.0"
+  contact:
+    name: "{Team Name}"
+    email: "{team@example.com}"
+
+servers:
+  - url: "https://api.example.com/v1"
+    description: Production
+  - url: "https://staging-api.example.com/v1"
+    description: Staging
+
+security:
+  - bearerAuth: []
+
+paths:
+  /resources:
+    get:
+      summary: List resources
+      description: Returns a paginated list of resources visible to the authenticated caller.
+      operationId: listResources
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Items per page.
+      responses:
+        "200":
+          description: Paginated list of resources.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create a resource
+      description: Creates a new resource and returns the created object.
+      operationId: createResource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResourceRequest"
+            example:
+              name: "My new resource"
+              description: "Optional description."
+      responses:
+        "201":
+          description: Resource created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /resources/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the resource.
+
+    get:
+      summary: Get a resource
+      description: Returns a single resource by ID.
+      operationId: getResource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: The requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    put:
+      summary: Update a resource
+      description: Replaces an existing resource with the provided data.
+      operationId: updateResource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateResourceRequest"
+      responses:
+        "200":
+          description: Resource updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resource"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete a resource
+      description: Permanently removes a resource by ID.
+      operationId: deleteResource
+      tags:
+        - Resources
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Resource deleted successfully. Empty body.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Resource:
+      type: object
+      required:
+        - id
+        - name
+        - createdAt
+      properties:
+        id:
+          type: string
+          example: "123"
+        name:
+          type: string
+          example: "Example resource"
+        description:
+          type: string
+          nullable: true
+          example: "Optional description."
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-01-15T12:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-01-16T09:30:00Z"
+
+    ResourceList:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Resource"
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 1
+            limit:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 42
+
+    CreateResourceRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "My new resource"
+        description:
+          type: string
+          nullable: true
+          example: "Optional description."
+
+    UpdateResourceRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Updated resource name"
+        description:
+          type: string
+          nullable: true
+          example: "Updated description."
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          example: "Field 'name' is required."
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid Bearer token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "UNAUTHORIZED"
+            message: "Bearer token is missing or has expired."
+
+    NotFound:
+      description: The requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "NOT_FOUND"
+            message: "Resource with id '123' not found."
+
+    ValidationError:
+      description: Request body failed validation.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "VALIDATION_ERROR"
+            message: "Field 'name' is required."
+
+    UnprocessableEntity:
+      description: Request is well-formed but semantically invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "UNPROCESSABLE"
+            message: "A resource with this name already exists."
+
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred."

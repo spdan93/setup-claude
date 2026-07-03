@@ -107,8 +107,8 @@ Como cada agente tem **contexto isolado**, ele não sabe o que aconteceu antes. 
 # Sem checkpoints (vai direto)
 /workflow --yolo
 
-# Linka a epic existente
-/workflow ABC-123
+# Retoma de uma fase específica
+/workflow --from=plan
 ```
 
 **O que acontece**:
@@ -116,7 +116,7 @@ Como cada agente tem **contexto isolado**, ele não sabe o que aconteceu antes. 
 1. **PRD Write** → você descreve a ideia, agent cria PRD → checkpoint (você aprova)
 2. **PRD Review** → agent revisa e refina → checkpoint (você aprova)
 3. **Plan Create** → agent decompõe em tasks técnicas → checkpoint (você aprova)
-4. **Execution** → você ou agents implementam as tasks
+4. **Execution** → `/develop` executa as tasks do Plan na ordem de dependência (DAG)
 
 > **Fase de Issue Tracker (opcional, não incluída)**: entre o Plan e a Execution
 > você pode plugar um passo de criação de issues no provider que adotar (GitHub
@@ -136,16 +136,28 @@ Como cada agente tem **contexto isolado**, ele não sabe o que aconteceu antes. 
 /plan-create --prd=docs/prds/2025_01_01-feature.md
 ```
 
-### 3. Implementar Task Específica
+### 3. Executar as Tasks do Plan
+
+Forma recomendada — `/develop` executa as tasks na ordem de dependência (DAG):
 
 ```bash
-# Developer pega a task e implementa
-Task(subagent_type="developer", prompt="Implementar ABC-123")
+/develop                       # próxima task não-bloqueada do Plan
+/develop --task=task-2-1-abc   # uma task específica (UUID ou ref 2.1)
+/develop --all                 # percorre o DAG inteiro
+/develop --all --yolo          # autônomo, commita por task
+/develop --status              # quadro de progresso
 ```
 
-**O que o developer faz**:
+Por baixo, `/develop` invoca o agente `developer` por task. Para uma task avulsa de baixo
+nível, dá pra chamar o agente direto:
 
-1. Lê issue do tracker (critérios de aceite + **TC-\* casos de teste**)
+```bash
+Task(subagent_type="developer", prompt="Implementar task-2-1-abc do Plan docs/plans/...")
+```
+
+**O que o developer faz (por task)**:
+
+1. Lê a task (do Plan; ou do tracker, se configurado) — critérios de aceite + **TC-\* casos de teste**
 2. **Move issue para "In Progress"** no tracker (se configurado)
 3. Lê excerpt do Plan (contexto técnico)
 4. Chama `/test-write` para gerar testes 1:1 dos TC-\* cases
@@ -191,34 +203,47 @@ Task(subagent_type="developer", prompt="Implementar ABC-123")
 
 ```
 .claude/
-├── agents/                 # Agents que rodam em sessões isoladas
-│   ├── prd-writer.md      # Cria PRD de ideia
-│   ├── prd-reviewer.md    # Revisa PRD draft
-│   ├── plan-architect.md  # Decompõe PRD em tasks
-│   ├── developer.md       # Implementa código
-│   └── code-reviewer.md   # Review em sessão isolada
+├── agents/                 # Subagentes (sessões isoladas, via Task)
+│   ├── prd-writer.md       # Cria PRD de ideia
+│   ├── prd-reviewer.md     # Revisa PRD draft
+│   ├── plan-architect.md   # Decompõe PRD em tasks + TC-*
+│   ├── developer.md        # Implementa código (TDD + review)
+│   └── code-reviewer.md    # Review em sessão isolada
 │
-├── skills/                 # Skills usadas internamente
-│   ├── workflow-orchestrator.md    # Transições do pipeline
-│   ├── checkpoint-validator.md     # Gates de aprovação
-│   └── meta-prompt.md              # Gera prompts para transferência entre agents
+├── commands/               # Slash commands que você chama
+│   ├── workflow.md         # Pipeline completo
+│   ├── prd-write · prd-review · plan-create.md    # Fases do pipeline
+│   ├── develop.md          # Executa as tasks do Plan (DAG)
+│   ├── test-write.md       # Testes 1:1 dos TC-*
+│   ├── e2e.md              # E2E de browser + evidência
+│   ├── commit · ship · documentation.md          # Commit (grava changelog por commit) / release / docs
+│   ├── meta-prompt.md      # Prompt estruturado (manual)
+│   ├── claude-md.md        # Cria/edita CLAUDE.md
+│   └── confirm-delete.md   # 2FA do hook de delete
 │
-├── commands/               # Comandos que você chama
-│   ├── workflow.md        # Pipeline completo
-│   ├── prd-write.md       # Criar PRD
-│   ├── prd-review.md      # Revisar PRD
-│   ├── plan-create.md     # Criar Plan
-│   ├── test-write.md      # Gerar testes 1:1 de TC-* cases
-│   └── meta-prompt.md     # Gerar prompt estruturado manualmente
+├── skills/                 # Skills (cada uma é <nome>/SKILL.md)
+│   ├── meta-prompt/                # interna: prompts entre agentes
+│   ├── workflow-orchestrator/      # interna: transições de fase
+│   ├── checkpoint-validator/       # interna: gates de aprovação
+│   ├── bug-tracker/                # standalone: audita bugs em commits
+│   ├── microservices-analyzer/     # standalone: análise de arquitetura (C4)
+│   ├── playwright-e2e-testing/     # standalone: guia/padrões de E2E
+│   ├── doc-technical/              # documentação técnica (via /documentation)
+│   ├── doc-functional/             # documentação funcional (via /documentation)
+│   ├── doc-test-plan/              # cadernos de testes (via /documentation)
+│   └── doc-api/                    # documentação de API (via /documentation)
 │
-└── orchestrator/
-    ├── config.json         # Thresholds, defaults
-    ├── README.md           # User guide detalhado
-    └── pipelines/          # Estado de cada pipeline
-        └── {pipeline_id}/
-            ├── pipeline-state.json
-            └── issues-manifest.json
+├── hooks/delete-2fa.sh     # Guarda de comandos destrutivos (2FA)
+├── statusline/             # Statusline mac/linux/windows (nível de usuário)
+├── templates/changelog/    # template do changelog (usado pelo /commit — não é skill)
+├── orchestrator/           # Dados internos do pipeline
+│   ├── config.json
+│   └── pipelines/{pipeline_id}/    # pipeline-state.json · dev-status.json
+├── install.sh · VERSION
+└── README · INSTALL · USAGE · CONVENTIONS (.md)
 ```
+
+> Árvore completa (níveis usuário vs projeto) em **[INSTALL.md](INSTALL.md)**.
 
 ## Artefatos Gerados
 
@@ -226,8 +251,14 @@ Task(subagent_type="developer", prompt="Implementar ABC-123")
 docs/
 ├── prds/
 │   └── YYYY_MM_DD-{pipeline_id}.md          # PRD oficial
-└── plans/
-    └── YYYY_MM_DD-{pipeline_id}-plan.md     # Implementation Plan
+├── plans/
+│   └── YYYY_MM_DD-{pipeline_id}-plan.md     # Implementation Plan
+├── changelog/                               # docs/changelog/ — entrada por commit (gerada pelo /commit)
+│   └── YYYY_MM_DD-HHMM-{slug}.md
+├── technical/                               # Documentação técnica (/documentation technical)
+├── functional/                              # Documentação funcional (/documentation functional)
+├── test-plans/                              # Cadernos de testes (/documentation test-plan)
+└── api/                                     # Documentação de API (/documentation api)
 
 .claude/orchestrator/pipelines/{pipeline_id}/
 ├── pipeline-state.json                      # Estado do pipeline
@@ -244,6 +275,10 @@ docs/
 | **developer**      | sonnet (default) | Implementa código + testes (staged) |
 | **code-reviewer**  | sonnet           | Revisa changes em sessão isolada    |
 
+Os agentes rodam em **sessões isoladas** via `Task(subagent_type=...)`. O `/workflow` e o
+`/develop` os invocam automaticamente, mas você também pode chamá-los direto (ver _Override
+de Modelo_ abaixo).
+
 ### Configuração de Modelos
 
 O modelo de cada agent é definido no **frontmatter YAML** do arquivo `.claude/agents/*.md`:
@@ -252,10 +287,9 @@ O modelo de cada agent é definido no **frontmatter YAML** do arquivo `.claude/a
 # .claude/agents/developer.md
 ---
 name: developer
-description: Implements tasks from tracker issues...
+description: Implements tasks with code, tests, and documentation
 model: sonnet # ← MODELO DEFINIDO AQUI
-template_version: '1.0'
-allowed_tools: [Read, Write, Edit, ...]
+tools: Read, Write, Edit, Grep, Glob, Bash, Skill, Task, AskUserQuestion
 ---
 ```
 
@@ -350,6 +384,33 @@ ou desabilite se não usar um.
 
 **Por que "Done" é manual?** O Tech Lead precisa revisar o PR e aprovar o merge. Automação futura pode criar PR automaticamente, mas a aprovação final será sempre humana.
 
+## Skills
+
+O kit traz 10 skills. Três são **internas do pipeline** (acionadas pelos comandos/agentes —
+você raramente chama à mão), três são **standalone** (uso direto, independentes do pipeline)
+e quatro são skills de **documentação sob demanda** (invocadas via `/documentation`):
+
+| Skill | Tipo | O que faz |
+| ----- | ---- | --------- |
+| `meta-prompt` | interna | Gera prompt estruturado para transferência de contexto entre agentes |
+| `workflow-orchestrator` | interna | Lógica de transição entre as fases do `/workflow` |
+| `checkpoint-validator` | interna | Valida artefatos e apresenta os gates `yes/no/edit` |
+| `bug-tracker` | standalone | Audita commits recentes em busca de bugs e gera plano de correção priorizado |
+| `microservices-analyzer` | standalone | Análise de arquitetura a partir do repo: diagramas C4, catálogo de serviços, matriz de dependências |
+| `playwright-e2e-testing` | standalone | Guia e padrões de testes E2E com Playwright (usado pelo `/e2e`) |
+| `doc-technical` | documentação, sob demanda | Gera documentação técnica em `docs/technical/` |
+| `doc-functional` | documentação, sob demanda | Gera documentação funcional em `docs/functional/` |
+| `doc-test-plan` | documentação, sob demanda | Gera cadernos de testes em `docs/test-plans/` |
+| `doc-api` | documentação, sob demanda | Gera documentação de API em `docs/api/` |
+
+Cada skill é uma pasta `skills/<nome>/SKILL.md`. As de documentação disparam via
+`/documentation <tipo>` ou pela descrição da tarefa; as standalone disparam pela descrição
+(ou podem ser invocadas explicitamente); as internas são acionadas pelo próprio pipeline.
+
+> As standalone (`bug-tracker`, `microservices-analyzer`, `playwright-e2e-testing`) não têm
+> relação com o pipeline PRD→Plan — são ferramentas avulsas que vêm no kit e funcionam em
+> qualquer projeto.
+
 ## Configuração
 
 ### config.json
@@ -433,26 +494,21 @@ nos artefatos locais (Plan + issues-manifest.json) com IDs placeholder.
 # o passo de criação de issues — um agente/comando específico do provider.
 
 # ═══════════════════════════════════════════════════════════════════
-# FASE 5: Implementação (Você Invoca)
+# FASE 5: Execução (Você Invoca)
 # ═══════════════════════════════════════════════════════════════════
 
-# Implementar primeira task
-Task(subagent_type="developer", prompt="Implementar ABC-201")
+# Executa as tasks do Plan na ordem de dependência:
+/develop --all          # ou /develop pra uma task por vez
 
-# O Developer agent:
-# 1. Lê a task ABC-201 (do Plan ou do tracker, se configurado)
-# 2. Move status para "In Progress" (se houver tracker)
-# 3. Lê excerpt do Plan
-# 4. Gera testes com /test-write
-# 5. Implementa código
-# 6. Submete para o code-reviewer (sessão isolada)
-# 7. Se review rejeitar → corrige (até 3x)
-# 8. Após aprovação → move para "In Review" (se configurado)
-# 9. Faz git add (staged)
+# Por baixo, para cada task o developer:
+# 1. Lê a task do Plan (excerpt) + TC-*
+# 2. Gera testes com /test-write (TDD: falham primeiro)
+# 3. Implementa até os testes passarem
+# 4. Submete ao code-reviewer (sessão isolada); se FAIL, corrige (até 3x)
+# 5. Deixa staged — /develop commita por task (em --all) ou você commita
 
-# Você revisa e commita:
+# /develop grava progresso em dev-status.json → retome com /develop --status
 git diff --staged
-git commit -m "feat(notifications): implement email notification service [ABC-201]"
 
 # ═══════════════════════════════════════════════════════════════════
 # FASE 6: Tech Lead Review (Manual)
@@ -549,107 +605,107 @@ O workflow inclui um hook de segurança que **bloqueia comandos destrutivos** at
 - `.claude/hooks/delete-2fa.sh` - Script que analisa comandos
 - `.claude/settings.json` - Configuração do hook
 
-## Frontend/UI Issue Guidelines
+## Diretrizes para Tasks de Frontend/UI
 
-For the workflow to be more autonomous on UI/UX tasks, issues must include specific information:
+Para o workflow ser mais autônomo em tarefas de UI/UX, as tasks precisam trazer informação específica:
 
-### Required Checklist for Frontend Issues
+### Checklist obrigatório para tasks de frontend
 
-#### 1. Visual Reference
+#### 1. Referência visual
 
-- [ ] Screenshot or link to an existing reference component in the system
-- [ ] If a new component, mockup/wireframe or detailed description
-- [ ] Reference an existing component by name and where it is already used
+- [ ] Screenshot ou link para um componente de referência já existente no sistema
+- [ ] Se for um componente novo, mockup/wireframe ou descrição detalhada
+- [ ] Referencie um componente existente pelo nome e onde ele já é usado
 
-#### 2. Behavior/UX
+#### 2. Comportamento/UX
 
-- [ ] Expected interactions (click, hover, focus, etc.)
-- [ ] Component states (loading, disabled, error, empty)
-- [ ] Example: "Dropdown should open on input click (onFocus), not just on icon"
+- [ ] Interações esperadas (click, hover, focus, etc.)
+- [ ] Estados do componente (loading, disabled, error, empty)
+- [ ] Exemplo: "O dropdown deve abrir ao clicar no input (onFocus), não só no ícone"
 
-#### 3. Visual Patterns
+#### 3. Padrões visuais
 
-- [ ] Specific colors if different from default
-- [ ] Borders, shadows, border-radius
-- [ ] Spacing if critical
-- [ ] Example: "Table with zebra stripes, subtle border and border-radius"
+- [ ] Cores específicas se diferentes do padrão
+- [ ] Bordas, sombras, border-radius
+- [ ] Espaçamento se for crítico
+- [ ] Exemplo: "Tabela com zebra stripes, borda sutil e border-radius"
 
-#### 4. Data and Options
+#### 4. Dados e opções
 
-- [ ] What data populates dropdowns/selects
-- [ ] Filtering rules (which values are valid in which context)
-- [ ] Required validations
+- [ ] Quais dados populam os dropdowns/selects
+- [ ] Regras de filtragem (quais valores são válidos em cada contexto)
+- [ ] Validações obrigatórias
 
-#### 5. Specific Acceptance Criteria
-
-```markdown
-## Acceptance Criteria
-
-- [ ] "Key" field shows: the expected set of keys for the current context
-- [ ] "Value" field shows: the values valid for the selected key
-- [ ] Inputs reuse the existing shared component (not a one-off)
-- [ ] Dropdown opens on input click (not just on icon)
-- [ ] Table with alternating row colors
-- [ ] Container with border and subtle background (fieldset pattern)
-```
-
-### Well-Written Issue Example
+#### 5. Critérios de aceite específicos
 
 ```markdown
-## Title
+## Critérios de Aceite
 
-[Frontend] Refactor dialog fields to reuse the shared dropdown component
-
-## Description
-
-Replace the current selects in the dialog with the existing shared dropdown
-component, following the pattern already used elsewhere in the app.
-
-## Visual Reference
-
-- Component: the existing shared dropdown component
-- Reference usage: an existing screen that already uses it
-- Screenshot: [attach image]
-
-## Behavior
-
-- Click on input opens dropdown automatically
-- Single selection allowed (max-selections=1)
-- "Value" field allows manual input in some contexts, but not others
-
-## Data
-
-- Key: the set of keys valid for the current context
-- Value: the values valid for the selected key
-- Destination: the available targets
-
-## Visual Pattern
-
-- Container: subtle background, thin border, rounded corners
-- Table: zebra stripes, subtle box-shadow
-- Header: light background, uppercase text
-
-## Acceptance Criteria
-
-- [ ] All fields reuse the shared dropdown component
-- [ ] Dropdown opens on input focus
-- [ ] Context-specific values appear only where valid
-- [ ] Layout follows the established reference pattern
+- [ ] Campo "Key" mostra: o conjunto de keys esperado para o contexto atual
+- [ ] Campo "Value" mostra: os valores válidos para a key selecionada
+- [ ] Inputs reutilizam o componente compartilhado existente (não um one-off)
+- [ ] Dropdown abre ao clicar no input (não só no ícone)
+- [ ] Tabela com cores de linha alternadas
+- [ ] Container com borda e fundo sutil (padrão fieldset)
 ```
 
-### Why This Matters
+### Exemplo de task bem escrita
 
-Without this information, the agent needs to:
+```markdown
+## Título
 
-1. Guess which component to use → wrong approach
-2. Infer behaviors → correction iterations
-3. Choose colors/styles → manual adjustments
+[Frontend] Refatorar campos do diálogo para reusar o componente de dropdown compartilhado
 
-With complete specification:
+## Descrição
 
-1. Correct implementation on first attempt
-2. Fewer review iterations
-3. More autonomous workflow
+Substituir os selects atuais do diálogo pelo componente de dropdown compartilhado já
+existente, seguindo o padrão já usado em outras partes do app.
+
+## Referência visual
+
+- Componente: o componente de dropdown compartilhado existente
+- Uso de referência: uma tela existente que já o utiliza
+- Screenshot: [anexar imagem]
+
+## Comportamento
+
+- Clicar no input abre o dropdown automaticamente
+- Seleção única permitida (max-selections=1)
+- Campo "Value" permite input manual em alguns contextos, mas não em outros
+
+## Dados
+
+- Key: o conjunto de keys válido para o contexto atual
+- Value: os valores válidos para a key selecionada
+- Destino: os alvos disponíveis
+
+## Padrão visual
+
+- Container: fundo sutil, borda fina, cantos arredondados
+- Tabela: zebra stripes, box-shadow sutil
+- Header: fundo claro, texto em maiúsculas
+
+## Critérios de Aceite
+
+- [ ] Todos os campos reutilizam o componente de dropdown compartilhado
+- [ ] Dropdown abre no focus do input
+- [ ] Valores específicos de contexto aparecem só onde são válidos
+- [ ] Layout segue o padrão de referência estabelecido
+```
+
+### Por que isso importa
+
+Sem essa informação, o agente precisa:
+
+1. Adivinhar qual componente usar → abordagem errada
+2. Inferir comportamentos → iterações de correção
+3. Escolher cores/estilos → ajustes manuais
+
+Com especificação completa:
+
+1. Implementação correta de primeira
+2. Menos iterações de review
+3. Workflow mais autônomo
 
 ## Troubleshooting
 
@@ -744,6 +800,7 @@ ls -la .claude/hooks/delete-2fa.sh
 7. **Resilience Loop** - Developer itera até 3x com feedback do review antes de escalar
 8. **Status Management (opcional)** - Developer atualiza status no tracker automaticamente (exceto Done)
 9. **Output Mode** - Quiet por padrão, verbose com `--verbose`
+10. **Commit nunca automático (regra de ouro)** - Nenhum comando ou agente commita sozinho. Commit só acontece quando **você** roda `/commit`/`/ship` ou pede direto; agentes e comandos (incl. `/develop`, mesmo no `--yolo`) fazem **stage** e param.
 
 ## Cenários de Uso
 
@@ -754,7 +811,7 @@ ls -la .claude/hooks/delete-2fa.sh
 # → PRD criado e aprovado
 # → PRD revisado e aprovado
 # → Plan criado com TC-* cases e aprovado
-# → Developer pega as tasks do Plan e implementa
+# → /develop executa as tasks do Plan na ordem de dependência
 ```
 
 ### Semi-Autônomo (Fase Específica)
@@ -844,7 +901,6 @@ Output inclui: prompts gerados, respostas dos agents, paths de arquivos, timing.
 /workflow --yolo               # Sem checkpoints (auto-aprova tudo)
 /workflow --verbose            # Output detalhado (debug)
 /workflow --from=plan          # Começa da fase Plan
-/workflow ABC-123              # Linka a epic existente
 ```
 
 ### Comandos Individuais
@@ -853,7 +909,9 @@ Output inclui: prompts gerados, respostas dos agents, paths de arquivos, timing.
 /prd-write "ideia"                # Cria PRD
 /prd-review path/to/prd.md        # Revisa PRD existente
 /plan-create --prd=path.md        # Cria Plan de PRD
-/test-write ABC-123               # Gera testes da task
+/develop --all                    # Executa as tasks do Plan (DAG)
+/develop --status                 # Progresso da execução
+/test-write --plan=path.md --task=task-1-2-abc   # Gera testes 1:1 dos TC-*
 /meta-prompt --task=review        # Gera prompt estruturado
 ```
 

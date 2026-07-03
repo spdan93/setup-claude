@@ -112,6 +112,7 @@ tags: [area labels, e.g. backend, frontend, etc.]
 - Map complexity to priority: simple→Low, medium→Medium, complex→High
 - Ground the task breakdown in discovered codebase patterns (not assumed)
 - Include a "Notes for Agents" section with patterns/edge cases discovered
+- Write the Plan **content/prose in pt-BR by default** (use en-US or es only if the user explicitly requests it). Keep the canonical structural **headings** in English (`Executive Summary`, `Notes for Agents`, `Test Cases (immutable)`), plus the task UUID and `[TC-N.M-NN]` formats — these are a contract read by `developer`, `code-reviewer`, `/test-write`, and `checkpoint-validator`.
 
 **NEVER**:
 - Create a plan without reading the PRD completely

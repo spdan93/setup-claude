@@ -7,7 +7,7 @@ description: Execute a structured commit with a detailed technical message and p
 
 Execute commit with detailed technical message and automatic push.
 
-> **Note**: The labels in the commit body below are presented in **English** as a portable default. Use the project's dominant language for the body if it differs (detect from existing commit history / repo docs; default to English if unclear).
+> **Note**: The commit body is written in **pt-BR by default** (labels: Causa / Mudanças / Consequência / Funcionalidade / Ganho). Use en-US labels (Cause / Changes / Consequence / Functionality / Gain) only if the user explicitly requests it.
 
 ## Instructions
 
@@ -39,17 +39,17 @@ Message must follow Conventional Commits format with technical detail:
 <type>(<scope>): <concise descriptive title>
 
 <detailed body explaining:>
-- Cause: Why this change was necessary
-- Changes: What was technically changed (files, functions, components)
-- Consequence: Expected impact/result
-- Functionality: How the feature/fix works
-- Gain: Technical or business benefit obtained
+- Causa: Why this change was necessary
+- Mudanças: What was technically changed (files, functions, components)
+- Consequência: Expected impact/result
+- Funcionalidade: How the feature/fix works
+- Ganho: Technical or business benefit obtained
 
 <footer with metadata>
 Developed-by: {execute `git config user.name` to get the real user name configured in git}
 ```
 
-**CRITICAL**: ALL 5 sections (Cause, Changes, Consequence, Functionality, Gain) are MANDATORY in every commit, regardless of size. Even small fixes must have all 5 sections. The `Developed-by` footer is also MANDATORY. If the project's language is not English, translate these section labels accordingly but keep all 5.
+**CRITICAL**: ALL 5 sections (Causa, Mudanças, Consequência, Funcionalidade, Ganho) are MANDATORY in every commit, regardless of size. Even small fixes must have all 5 sections. The `Developed-by` footer is also MANDATORY. Use en-US labels only if the user explicitly requests it.
 
 ### 3. Commit Types
 
@@ -80,26 +80,26 @@ Follow the project's existing scope conventions if it has them (check `git log`)
 ### 5. Complete Message Example
 
 ```
-feat(auth): add refresh-token rotation
+feat(auth): adiciona rotação de refresh token
 
-Cause: Access tokens were long-lived with no rotation, widening the
-window of misuse if a token leaked.
+Causa: Os access tokens tinham vida longa sem rotação, ampliando a
+janela de uso indevido em caso de vazamento.
 
-Changes:
-- Added RefreshTokenService with rotate() and revoke() methods
-- Updated login handler to issue a paired refresh token
-- Added refresh_tokens table migration with expiry + revoked columns
-- Wired /auth/refresh endpoint to validate and rotate
+Mudanças:
+- Adicionado RefreshTokenService com métodos rotate() e revoke()
+- Atualizado o handler de login para emitir um refresh token pareado
+- Adicionada migration refresh_tokens com colunas expiry + revoked
+- Conectado o endpoint /auth/refresh para validar e rotacionar
 
-Consequence: Stolen tokens are invalidated on the next refresh,
-shrinking the exposure window to a single short-lived access token.
+Consequência: Tokens roubados são invalidados no próximo refresh,
+reduzindo a exposição a um único access token de curta duração.
 
-Functionality: On each refresh the old token is revoked and a new
-pair is issued; reuse of a revoked token triggers full session
-revocation.
+Funcionalidade: A cada refresh, o token antigo é revogado e um novo
+par é emitido; o reuso de token revogado dispara revogação completa
+da sessão.
 
-Gain: Stronger session security with no change to the client flow
-beyond calling the refresh endpoint.
+Ganho: Segurança de sessão mais robusta sem alteração no fluxo do
+cliente além de chamar o endpoint de refresh.
 
 Developed-by: {git config user.name}
 ```
@@ -125,7 +125,101 @@ To **auto-close the issue** (if the tracker supports it), add to the footer:
 Fixes <ISSUE-ID>
 ```
 
-### 7. Commit Process
+### 7. Generate the Changelog Entry
+
+Before running `git commit`, create a changelog entry so it ships inside the commit it describes.
+
+> **Changelog language**: the changelog entry is written in **pt-BR by default**. There is no per-commit language prompt — the changelog file follows pt-BR regardless of the commit message language.
+
+**7a. Resolve metadata**
+
+```bash
+AUTHOR=$(git config user.name)
+DATE=$(date +%Y-%m-%d)
+TIME=$(date +%H:%M)
+STAMP=$(date +%Y_%m_%d-%H%M)
+BRANCH=$(git branch --show-current)
+# List staged files (use git status --porcelain if nothing is staged yet)
+git diff --cached --name-only
+```
+
+Extract `type` and `scope` from the commit title (e.g. `feat(auth)` → type=`feat`, scope=`auth`). Set `issue` to the linked identifier or `null`.
+
+**7b. Build the slug**
+
+Derive `slug` from the commit title using this exact algorithm:
+
+1. Strip the `type(scope): ` prefix (everything up to and including the first `: `).
+2. Lowercase the remainder.
+3. Replace any character that is not `[a-z0-9]` with a hyphen (`-`).
+4. Collapse consecutive hyphens into one; strip leading/trailing hyphens.
+5. Truncate to ≤50 characters (cut at a word boundary if possible).
+
+Example: `feat(auth): add refresh-token rotation` → `add-refresh-token-rotation`.
+
+This `slug`, combined with `STAMP`, forms the changelog filename: `docs/changelog/${STAMP}-${slug}.md`.
+
+**7c. Fill the template**
+
+Read `templates/changelog/commit-entry.md` and substitute every `{{placeholder}}` with the resolved value. If the template file is missing, use the inline format below as a fallback:
+
+```markdown
+---
+date: <DATE>
+time: <TIME>
+author: <AUTHOR>
+branch: <BRANCH>
+type: <type>
+scope: <scope>
+commit_title: <full commit title>
+files_changed: <N>
+issue: <ISSUE-ID|null>
+---
+
+# <commit title>
+
+## Causa
+<why the change was necessary>
+
+## Mudanças
+<files / functions / components changed>
+
+## Consequência
+<impact / result>
+
+## Funcionalidade
+<how it works>
+
+## Ganho
+<technical or business benefit>
+
+## Arquivos
+<- one bullet per changed file path>
+```
+
+**7d. Write the entry**
+
+```bash
+# Compute the target path — the LLM then writes the filled template to this file
+# using its file-write tool (Write), not a shell heredoc.
+# Path follows the convention: docs/changelog/YYYY_MM_DD-HHMM-{slug}.md
+CHANGELOG_FILE="docs/changelog/${STAMP}-${slug}.md"
+# (use the Write tool to write the filled template content to $CHANGELOG_FILE)
+```
+
+The `$VAR` names (STAMP, slug, etc.) are computed via the bash shown in 7a–7b; the final file content is written with the Write tool to `docs/changelog/${STAMP}-${slug}.md`. Do NOT run `git add` here — the commit step (section 8) stages everything, including this just-written changelog file, with its own `git add -A`.
+
+**7e. (Optional) Update the index**
+
+Append a one-line entry to `docs/changelog/INDEX.md`:
+
+```
+- <DATE> <TIME> — <commit title> — <AUTHOR>
+```
+
+Stage the index file if updated.
+
+### 8. Commit Process
 
 **IMPORTANT**: NEVER change the current branch. Commit and push must be done on the checked-out branch.
 
@@ -135,7 +229,7 @@ Execute in order:
 # 1. Check current branch (for logging only, DO NOT change)
 git branch --show-current
 
-# 2. Add all modified files
+# 2. Stage all modified files, including the changelog file written in step 7d
 git add -A
 
 # 3. Create commit with structured message (include [<ISSUE-ID>] if provided)
@@ -150,16 +244,16 @@ git push
 
 > **Multiple remotes**: If the repo is configured with more than one remote (e.g. a mirror), push to each as needed — `git remote -v` lists them, then `git push <remote>` per remote. Otherwise a plain `git push` is sufficient.
 
-### 8. Important Rules
+### 9. Important Rules
 
 1. **NEVER switch branches**: Always respect the checked-out branch
 2. **Mandatory analysis**: ALWAYS analyze diff before creating message
 3. **Technical precision**: Mention specific files, functions, and components changed
 4. **Business context**: Explain change value when applicable
-5. **Body language**: Write the body in the project's dominant language (default English); keep all 5 sections
+5. **Body language**: Write the body in **pt-BR by default** (Causa/Mudanças/Consequência/Funcionalidade/Ganho); use en-US only if the user explicitly requests it; keep all 5 sections
 6. **Push**: Push to the configured remote(s) after committing
 
-### 9. Error Handling
+### 10. Error Handling
 
 If push fails:
 - Check for remote commits not synced (`git pull --rebase`)
@@ -170,7 +264,7 @@ If no changes to commit:
 - Inform user there are no pending changes
 - Don't execute unnecessary commands
 
-### 10. Checklist
+### 11. Checklist
 
 Before finishing, verify:
 
@@ -178,9 +272,10 @@ Before finishing, verify:
 - [ ] Asked about issue tracker linking
 - [ ] Included issue identifier (if provided)
 - [ ] Message follows Conventional Commits
-- [ ] All 5 sections (Cause/Changes/Consequence/Functionality/Gain) are present and clear
+- [ ] All 5 sections (Causa/Mudanças/Consequência/Funcionalidade/Ganho) are present and clear
 - [ ] Specific technical files were mentioned
 - [ ] Footer includes "Developed-by: {git config user.name}"
+- [ ] Changelog entry written to `docs/changelog/` and staged
 - [ ] Commit was created successfully
 - [ ] Push was executed successfully to the configured remote(s)
 

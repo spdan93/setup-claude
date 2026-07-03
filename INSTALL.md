@@ -33,8 +33,17 @@ substituir (`[y/N]`). Em execução não-interativa (agente/CI) ele mantém a su
 segurança — use `FORCE_STATUSLINE=1` pra substituir sem perguntar.
 
 > **Variáveis**: `CLAUDE_CONFIG_DIR=<dir>` muda o destino de usuário (default `~/.claude`).
-> Windows: o instalador é bash (mac/linux); no Windows, copie a pasta e ligue o
-> `statusline-command-windows.ps1` manualmente (ver [statusline/README.md](statusline/README.md)).
+> **Windows**: use o instalador PowerShell (requer PowerShell 7+):
+>
+> ```powershell
+> pwsh -File C:\caminho\do\kit\install.ps1 .        # híbrido no repo atual
+> pwsh -File C:\caminho\do\kit\install.ps1 -Global  # tudo em ~/.claude (sem split)
+> ```
+>
+> O `install.ps1` espelha o `install.sh` (híbrido, idempotente, merge não-destrutivo do
+> `settings.json`, ask-before-replace da statusline, prune por manifest, version stamp).
+> Ressalva: o hook **delete-2FA é bash** — no Windows ele só dispara se houver um bash
+> (Git Bash) disponível pro Claude Code; o resto funciona sem bash.
 
 ---
 
@@ -77,7 +86,7 @@ cat /caminho/do/projeto/.claude/.kit-version
 | Peça | Nível | Caminho |
 |------|-------|---------|
 | Statusline | **usuário** | `~/.claude/statusline/` + `statusLine` em `~/.claude/settings.json` |
-| Comandos, agentes, skills | **projeto** | `<repo>/.claude/{commands,agents,skills}/` |
+| Comandos, agentes, skills | **projeto** | `<repo>/.claude/{commands,agents,skills}/` (inclui `skills/doc-*`) |
 | Hook delete-2FA | **projeto** | `<repo>/.claude/hooks/` + `hooks` em `<repo>/.claude/settings.json` |
 | Estado do pipeline | **projeto** | `<repo>/.claude/orchestrator/pipelines/` (efêmero, gitignored) |
 | PRDs / Plans / changelog / docs | **repo (versionado)** | `<repo>/docs/...` — **fora** do `.claude` |
@@ -156,9 +165,11 @@ branch padrão, etc.). Crie/edite o seu com:
 ├── .gitignore                   # ganha a linha ".claude/"
 ├── docs/                        # artefatos versionados (FORA do .claude)
 │   ├── prds/        plans/      # PRDs e Implementation Plans
-│   └── changelog... test-evidence/
+│   ├── changelog/               # entrada por commit (gerada pelo /commit)
+│   ├── technical/  functional/  test-plans/  api/   # documentação sob demanda
+│   └── test-evidence/
 └── .claude/                     # tooling local (gitignored)
-    ├── README.md INSTALL.md USAGE.md CONVENTIONS.md  install.sh
+    ├── README.md INSTALL.md USAGE.md CONVENTIONS.md  install.sh · install.ps1
     ├── settings.json            # hook delete-2FA
     ├── settings.local.json      # allowlist de permissões
     ├── agents/  commands/  skills/
