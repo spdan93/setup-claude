@@ -12,20 +12,20 @@ issue: {{ISSUE-ID|null}}
 
 # {{commit title}}
 
-## Cause
+## Causa
 {{why the change was necessary}}
 
-## Changes
+## Mudanças
 {{files / functions / components changed}}
 
-## Consequence
+## Consequência
 {{impact / result}}
 
-## Functionality
+## Funcionalidade
 {{how it works}}
 
-## Gain
+## Ganho
 {{technical or business benefit}}
 
-## Files
+## Arquivos
 {{- one bullet per changed file path}}

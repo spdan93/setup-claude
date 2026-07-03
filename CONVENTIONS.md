@@ -130,8 +130,10 @@ Opcional e não incluído. Sempre que um ID de issue aparecer, use o placeholder
   (en-US ou es só se o usuário pedir). Mas os **headings estruturais ficam em inglês
   canônico** — são contrato lido por `developer`, `code-reviewer`, `/test-write` e
   `checkpoint-validator` (ex.: `Test Cases (immutable)`, `Executive Summary`).
-- **Mensagem de commit**: segue a convenção do projeto (default inglês se incerto). É a
-  única saída que não é pt-BR por padrão; o changelog derivado dela, esse sim, é pt-BR.
+- **Mensagem de commit**: corpo escrito em **pt-BR por padrão** (labels: Causa / Mudanças /
+  Consequência / Funcionalidade / Ganho); en-US só se o usuário pedir explicitamente. As
+  palavras-chave do tipo convencional (`feat`, `fix`, `refactor`, etc.) e o footer
+  `Developed-by` permanecem em inglês.
 - **Headings de template** (PRD/Plan/meta-prompt): inglês canônico (lista acima).
 
 ---

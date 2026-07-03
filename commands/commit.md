@@ -7,7 +7,7 @@ description: Execute a structured commit with a detailed technical message and p
 
 Execute commit with detailed technical message and automatic push.
 
-> **Note**: The labels in the commit body below are presented in **English** as a portable default. Use the project's dominant language for the body if it differs (detect from existing commit history / repo docs; default to English if unclear).
+> **Note**: The commit body is written in **pt-BR by default** (labels: Causa / Mudanças / Consequência / Funcionalidade / Ganho). Use en-US labels (Cause / Changes / Consequence / Functionality / Gain) only if the user explicitly requests it.
 
 ## Instructions
 
@@ -39,17 +39,17 @@ Message must follow Conventional Commits format with technical detail:
 <type>(<scope>): <concise descriptive title>
 
 <detailed body explaining:>
-- Cause: Why this change was necessary
-- Changes: What was technically changed (files, functions, components)
-- Consequence: Expected impact/result
-- Functionality: How the feature/fix works
-- Gain: Technical or business benefit obtained
+- Causa: Why this change was necessary
+- Mudanças: What was technically changed (files, functions, components)
+- Consequência: Expected impact/result
+- Funcionalidade: How the feature/fix works
+- Ganho: Technical or business benefit obtained
 
 <footer with metadata>
 Developed-by: {execute `git config user.name` to get the real user name configured in git}
 ```
 
-**CRITICAL**: ALL 5 sections (Cause, Changes, Consequence, Functionality, Gain) are MANDATORY in every commit, regardless of size. Even small fixes must have all 5 sections. The `Developed-by` footer is also MANDATORY. If the project's language is not English, translate these section labels accordingly but keep all 5.
+**CRITICAL**: ALL 5 sections (Causa, Mudanças, Consequência, Funcionalidade, Ganho) are MANDATORY in every commit, regardless of size. Even small fixes must have all 5 sections. The `Developed-by` footer is also MANDATORY. Use en-US labels only if the user explicitly requests it.
 
 ### 3. Commit Types
 
@@ -80,26 +80,26 @@ Follow the project's existing scope conventions if it has them (check `git log`)
 ### 5. Complete Message Example
 
 ```
-feat(auth): add refresh-token rotation
+feat(auth): adiciona rotação de refresh token
 
-Cause: Access tokens were long-lived with no rotation, widening the
-window of misuse if a token leaked.
+Causa: Os access tokens tinham vida longa sem rotação, ampliando a
+janela de uso indevido em caso de vazamento.
 
-Changes:
-- Added RefreshTokenService with rotate() and revoke() methods
-- Updated login handler to issue a paired refresh token
-- Added refresh_tokens table migration with expiry + revoked columns
-- Wired /auth/refresh endpoint to validate and rotate
+Mudanças:
+- Adicionado RefreshTokenService com métodos rotate() e revoke()
+- Atualizado o handler de login para emitir um refresh token pareado
+- Adicionada migration refresh_tokens com colunas expiry + revoked
+- Conectado o endpoint /auth/refresh para validar e rotacionar
 
-Consequence: Stolen tokens are invalidated on the next refresh,
-shrinking the exposure window to a single short-lived access token.
+Consequência: Tokens roubados são invalidados no próximo refresh,
+reduzindo a exposição a um único access token de curta duração.
 
-Functionality: On each refresh the old token is revoked and a new
-pair is issued; reuse of a revoked token triggers full session
-revocation.
+Funcionalidade: A cada refresh, o token antigo é revogado e um novo
+par é emitido; o reuso de token revogado dispara revogação completa
+da sessão.
 
-Gain: Stronger session security with no change to the client flow
-beyond calling the refresh endpoint.
+Ganho: Segurança de sessão mais robusta sem alteração no fluxo do
+cliente além de chamar o endpoint de refresh.
 
 Developed-by: {git config user.name}
 ```
@@ -178,22 +178,22 @@ issue: <ISSUE-ID|null>
 
 # <commit title>
 
-## Cause
+## Causa
 <why the change was necessary>
 
-## Changes
+## Mudanças
 <files / functions / components changed>
 
-## Consequence
+## Consequência
 <impact / result>
 
-## Functionality
+## Funcionalidade
 <how it works>
 
-## Gain
+## Ganho
 <technical or business benefit>
 
-## Files
+## Arquivos
 <- one bullet per changed file path>
 ```
 
@@ -250,7 +250,7 @@ git push
 2. **Mandatory analysis**: ALWAYS analyze diff before creating message
 3. **Technical precision**: Mention specific files, functions, and components changed
 4. **Business context**: Explain change value when applicable
-5. **Body language**: Write the body in the project's dominant language (default English); keep all 5 sections
+5. **Body language**: Write the body in **pt-BR by default** (Causa/Mudanças/Consequência/Funcionalidade/Ganho); use en-US only if the user explicitly requests it; keep all 5 sections
 6. **Push**: Push to the configured remote(s) after committing
 
 ### 10. Error Handling
@@ -272,7 +272,7 @@ Before finishing, verify:
 - [ ] Asked about issue tracker linking
 - [ ] Included issue identifier (if provided)
 - [ ] Message follows Conventional Commits
-- [ ] All 5 sections (Cause/Changes/Consequence/Functionality/Gain) are present and clear
+- [ ] All 5 sections (Causa/Mudanças/Consequência/Funcionalidade/Ganho) are present and clear
 - [ ] Specific technical files were mentioned
 - [ ] Footer includes "Developed-by: {git config user.name}"
 - [ ] Changelog entry written to `docs/changelog/` and staged
