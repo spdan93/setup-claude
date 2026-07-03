@@ -21,7 +21,7 @@ tests, and runs the `code-reviewer` loop) one task at a time.
 /develop                              # implement the next unblocked task of the active Plan
 /develop --task=task-2-1-abc          # implement a specific task (by UUID or ref like 2.1)
 /develop --all                        # run the whole DAG until done or blocked
-/develop --all --yolo                 # run the whole DAG, auto-commit per task, no checkpoints
+/develop --all --yolo                 # run the whole DAG unattended (no checkpoints); still never commits
 /develop --plan=docs/plans/2026_02_01-x-plan.md   # choose the Plan explicitly
 /develop --status                     # show progress only (done / pending / blocked / failed)
 ```
@@ -33,14 +33,14 @@ tests, and runs the `code-reviewer` loop) one task at a time.
 | `--plan` | Path to the Plan. Default: most recent in `docs/plans/`, or the active pipeline. |
 | `--task` | A single task to run, by UUID (`task-2-1-abc`) or ref (`2.1`). |
 | `--all` | Run every task, in dependency order, until done or blocked. |
-| `--yolo` | No per-task checkpoint; auto-commit each task so the next starts on a clean diff. |
+| `--yolo` | Run the DAG unattended (no per-task checkpoint). **Still never commits** — changes are staged; you commit with `/commit`. |
 | `--status` | Print the progress table and exit (no execution). |
 | (none) | Run the **single next unblocked task** (status `pending`, all deps `done`). |
 
 ## Delegates To
 - Agent: `developer` (per task) — implements, tests, runs the `code-reviewer` loop, stages.
 - Skill: `meta-prompt` — **REQUIRED** to build the developer prompt for each task.
-- Command: `/commit` — to commit a finished task (interactive) when the user opts in.
+- Command: `/commit` — **you** run it to commit finished work. `/develop` never invokes it automatically.
 
 ## How it works
 
@@ -98,17 +98,19 @@ tests, and runs the `code-reviewer` loop) one task at a time.
 5. **Checkpoint / commit** (see below).
 6. Save state; continue (in `--all`) or finish.
 
-### 6. Checkpoints & commits
-The `developer` agent **never commits** — it stages. Because the `code-reviewer` reviews the
-**staged diff**, letting multiple tasks pile up uncommitted would muddy per-task review. So
-`/develop` resolves the commit at the orchestration level:
+### 6. Checkpoints (never auto-commit)
+**Golden rule: `/develop` NEVER commits.** A commit happens only when *you* run `/commit`
+(or `/ship`). The `developer` agent stages its work; `/develop` leaves it staged and stops
+or continues — it never runs `git commit`, under any flag.
 
-- **Single-task run** (default): leave the changes **staged** and stop. You review and run
-  `/commit` yourself. (Preserves the "human commits" principle.)
+- **Single-task run** (default): implement one task, leave the changes **staged**, and stop.
+  You review and run `/commit` when you want.
 - **`--all` (checkpoints on)**: after each task, show the staged files and ask
-  `commit & continue / stop / skip commit`. Committing keeps the next task's diff clean.
-- **`--all --yolo`**: auto-commit each finished task (structured message following the
-  project's commit convention, e.g. `feat(scope): {task title} [{ref}]`) and continue.
+  `continue / stop`. For a clean per-task history, run `/commit` yourself before continuing
+  (recommended) — `/develop` will not do it for you.
+- **`--all --yolo`**: run every task unattended (no checkpoints). Changes from all tasks
+  accumulate **staged**; you commit at the end with `/commit` (or `/ship`). Trade-off: the
+  per-task diffs are not individually committed unless you commit between runs.
 
 ### 7. Report
 At the end, print:
@@ -130,12 +132,12 @@ Next: resolve 2.1, then re-run /develop --all
 - Run tasks only when their `depends_on` are all `done` (respect the DAG).
 - Persist progress to `dev-status.json` after every status change (enables resume).
 - Treat "Test Cases (immutable)" as read-only; never alter a task's TC-*.
-- Keep per-task diffs reviewable (commit between tasks in `--all`, or stop on single-task).
+- Leave finished work **staged** for the user to commit; between tasks, pause so the user can run `/commit` for a clean history if they want.
 - Stop a branch of the DAG whose dependency `failed` (mark dependents `blocked`).
 
 **NEVER**:
 - Implement code directly — always delegate to the `developer` agent.
-- Auto-commit without `--yolo` (or explicit user approval at the checkpoint).
+- **Auto-commit — under ANY flag, including `--yolo`.** `/develop` never runs `git commit`; commits happen only when the user runs `/commit` or `/ship`.
 - Start a task whose dependencies aren't `done`.
 - Modify the Plan or its tasks (read-only source of truth).
 - Continue running dependents after a dependency failed.

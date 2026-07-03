@@ -116,6 +116,10 @@ artefato antes de seguir). Nada é commitado automaticamente.
 | `/ship` | Version bump + `/commit` (que já grava o changelog) | `/ship` · `/ship minor` · `/ship fix 1.6.4` |
 | `/documentation <tipo>` | Gera documentação do tipo escolhido via skill `doc-<tipo>` | `/documentation technical` · `/documentation api` |
 
+> **Regra de ouro — commit nunca é automático**: nenhum comando ou agente commita sozinho.
+> Commit só quando **você** roda `/commit` ou `/ship` (ou pede direto). O `developer` e o
+> `/develop` (mesmo no `--yolo`) fazem **stage** e param — nunca rodam `git commit`.
+
 - **`/commit`** — analisa o diff, pergunta se quer linkar a uma issue (`<ISSUE-ID>` no
   título; `Fixes <ISSUE-ID>` no rodapé), exige as **5 seções obrigatórias** no corpo
   (Cause, Changes, Consequence, Functionality, Gain) + `Developed-by`, e **grava uma

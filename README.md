@@ -800,6 +800,7 @@ ls -la .claude/hooks/delete-2fa.sh
 7. **Resilience Loop** - Developer itera até 3x com feedback do review antes de escalar
 8. **Status Management (opcional)** - Developer atualiza status no tracker automaticamente (exceto Done)
 9. **Output Mode** - Quiet por padrão, verbose com `--verbose`
+10. **Commit nunca automático (regra de ouro)** - Nenhum comando ou agente commita sozinho. Commit só acontece quando **você** roda `/commit`/`/ship` ou pede direto; agentes e comandos (incl. `/develop`, mesmo no `--yolo`) fazem **stage** e param.
 
 ## Cenários de Uso
 

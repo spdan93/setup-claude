@@ -138,6 +138,18 @@ Opcional e não incluído. Sempre que um ID de issue aparecer, use o placeholder
 
 ---
 
+## Commits (regra de ouro)
+
+**Nenhum comando ou agente commita automaticamente.** Um commit só acontece quando o
+**usuário pede explicitamente** — rodando `/commit` (ou `/ship`), ou por instrução direta
+("commita isso"). Agentes e comandos **preparam** as mudanças (fazem `git add`/stage) e
+**param**, esperando o usuário. Regras:
+
+- O agente `developer` **só faz stage**, nunca commita.
+- `/develop` **nunca commita** — nem no `--yolo`; deixa tudo staged pra você.
+- `/commit` e `/ship` são os **únicos** que rodam `git commit`, e são **sempre** invocados
+  por você. Nunca há `git commit` implícito.
+
 ## Modelos
 
 | Tier | Quando |
