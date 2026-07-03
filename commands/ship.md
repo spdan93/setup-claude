@@ -175,15 +175,15 @@ Header: value
 
 ---
 
-## PHASE 1.5: Documentation (Optional)
+## PHASE 2: Documentation (Optional)
 
 If the change warrants formal documentation (new feature, API change, architecture update, etc.), invoke the `/documentation` command to generate the relevant doc type before committing.
 
-If no docs are needed, skip to Phase 2.
+If no docs are needed, skip to Phase 3.
 
 ---
 
-## PHASE 2: Commit & Push
+## PHASE 3: Commit & Push
 
 **MANDATORY**: Invoke the `commit` command (use the Skill tool to invoke `commit`).
 
@@ -208,7 +208,7 @@ Before finishing, verify:
 - [ ] Checked changes in ALL changed packages/apps
 - [ ] Bumped version in the manifest for each changed package
 
-**Phase 1 (optional) - Documentation:**
+**Phase 2 (optional) - Documentation:**
 
 - [ ] If change warrants formal docs, `/documentation` was invoked
 - [ ] Document is in the correct location in the docs directory
@@ -218,7 +218,7 @@ Before finishing, verify:
 - [ ] Internal links work
 - [ ] Tables are properly formatted
 
-**Phase 2 - Commit (handled by `commit`):**
+**Phase 3 - Commit (handled by `commit`):**
 
 - [ ] `commit` was invoked via Skill tool
 - [ ] All 5 sections present (Cause/Changes/Consequence/Functionality/Gain)

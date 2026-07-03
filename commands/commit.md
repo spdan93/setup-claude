@@ -147,8 +147,17 @@ Extract `type` and `scope` from the commit title (e.g. `feat(auth)` → type=`fe
 
 **7b. Build the slug**
 
-Strip the `type(scope):` prefix from the commit title first, then convert the remaining title to kebab-case (≤50 chars), stripping special characters.
+Derive `slug` from the commit title using this exact algorithm:
+
+1. Strip the `type(scope): ` prefix (everything up to and including the first `: `).
+2. Lowercase the remainder.
+3. Replace any character that is not `[a-z0-9]` with a hyphen (`-`).
+4. Collapse consecutive hyphens into one; strip leading/trailing hyphens.
+5. Truncate to ≤50 characters (cut at a word boundary if possible).
+
 Example: `feat(auth): add refresh-token rotation` → `add-refresh-token-rotation`.
+
+This `slug`, combined with `STAMP`, forms the changelog filename: `docs/changelog/${STAMP}-${slug}.md`.
 
 **7c. Fill the template**
 

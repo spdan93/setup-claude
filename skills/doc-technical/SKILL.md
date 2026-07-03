@@ -73,6 +73,8 @@ docs/technical/YYYY_MM_DD-{slug}.md
 
 where `YYYY_MM_DD` is today's date (e.g., `2026_06_23`).
 
+Create the `docs/technical/` directory if it does not exist.
+
 Report the exact path to the user when done.
 
 ## Output language
