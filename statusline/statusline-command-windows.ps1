@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 # =============================================================================
-# Claude Code statusline — Windows (PowerShell 7+)
+# Claude Code statusline - Windows (Windows PowerShell 5.1+ or PowerShell 7+)
 # Mirrors the macOS/Linux bash versions. No jq needed (uses ConvertFrom-Json).
 # Wire it in settings.json:
 #   "statusLine": { "type": "command",
@@ -105,7 +105,7 @@ if ($cwd -and (Test-Path $cwd)) {
 # --- Context bar ---
 $barColor = ColorByPct $usedPct
 $filled = [math]::Floor($usedPct * 10 / 100); $empty = 10 - $filled
-$bar = ('▓' * $filled) + ('░' * $empty)
+$bar = ('#' * $filled) + ('.' * $empty)
 
 # --- Line 1: [Model] dir | $cost | duration | tokens ---
 $line1 = "$C[$modelTag]$R $W$dirName$R"
