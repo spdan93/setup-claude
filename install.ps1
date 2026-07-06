@@ -1,15 +1,15 @@
 # =============================================================================
-# Claude Code kit installer — Windows (Windows PowerShell 5.1+ or PowerShell 7+)
+# Claude Code kit installer - Windows (Windows PowerShell 5.1+ or PowerShell 7+)
 # =============================================================================
 # Native Windows counterpart of install.sh. Runs on the built-in Windows
-# PowerShell 5.1 (`powershell`) — PowerShell 7 (`pwsh`) is NOT required.
+# PowerShell 5.1 (`powershell`) - PowerShell 7 (`pwsh`) is NOT required.
 # Idempotent and non-destructive: never deletes your files, never clobbers an
 # existing settings.json (merges), asks before replacing an existing statusLine.
 #
 # Layout (hybrid, same as install.sh):
-#   * Statusline       -> USER level  (~/.claude)          — same in every project
+#   * Statusline       -> USER level  (~/.claude)          - same in every project
 #   * Commands/agents/
-#     skills/hook/etc. -> PROJECT level (<repo>\.claude)   — local to the repo
+#     skills/hook/etc. -> PROJECT level (<repo>\.claude)   - local to the repo
 #   * <repo>\.claude   -> added to <repo>\.gitignore
 #   * Durable docs (PRDs, plans, changelog) live OUTSIDE .claude, at the repo root.
 #
@@ -91,7 +91,7 @@ Log "user: $UserDest"
 if ($Hybrid) { Log "project: $ProjDest" }
 
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Log "! git not found — the changelog/commit features need it"
+    Log "! git not found - the changelog/commit features need it"
 }
 
 # --- Statusline command (use pwsh if available, else Windows PowerShell) -----
@@ -246,6 +246,6 @@ Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  * Restart Claude Code so it picks up the new config."
 if ($Hybrid) { Write-Host "  * Commands/agents/skills are in $ProjDest (gitignored). Statusline is user-level." }
-Write-Host "  * Durable docs (PRDs, plans, changelog) live at the repo root under docs\ — not in .claude\."
+Write-Host "  * Durable docs (PRDs, plans, changelog) live at the repo root under docs\ - not in .claude\."
 Write-Host "  * The delete-2FA hook is a bash script; it fires only if a bash (Git Bash) is available."
-Write-Host "  * Guides:  $(if ($Hybrid) { $ProjDest } else { $UserDest })\USAGE.md  ·  CONVENTIONS.md"
+Write-Host "  * Guides:  $(if ($Hybrid) { $ProjDest } else { $UserDest })\USAGE.md  |  CONVENTIONS.md"
