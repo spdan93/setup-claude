@@ -10,7 +10,7 @@ até reset), branch git + arquivos staged/modificados, link do repo e linhas +/-
 |----|---------|---------------|
 | macOS | `statusline-command-macos.sh` | `bash` (usa `stat -f`, BSD) |
 | Linux | `statusline-command-linux.sh` | `bash` (usa `stat -c`, GNU) |
-| Windows | `statusline-command-windows.ps1` | PowerShell 7+ (`pwsh`) |
+| Windows | `statusline-command-windows.ps1` | Windows PowerShell 5.1+ (`powershell`) ou `pwsh` |
 
 > As três produzem a mesma saída. A versão Windows usa glyphs ASCII no lugar de
 > alguns ícones unicode, por compatibilidade de terminal.
@@ -45,7 +45,7 @@ global em `~/.claude/`). Escolha **uma** linha conforme o SO:
   // Windows (global)
   "statusLine": {
     "type": "command",
-    "command": "pwsh -NoProfile -File \"%USERPROFILE%\\.claude\\statusline\\statusline-command-windows.ps1\""
+    "command": "powershell -NoProfile -File \"%USERPROFILE%\\.claude\\statusline\\statusline-command-windows.ps1\""
   }
 }
 ```
@@ -53,7 +53,7 @@ global em `~/.claude/`). Escolha **uma** linha conforme o SO:
 ## Dependências
 
 - **macOS/Linux**: `jq`, `git`, `bc` (todos comuns; instale via brew/apt se faltar).
-- **Windows**: PowerShell 7+ e `git`. Não precisa de `jq` (usa `ConvertFrom-Json`).
+- **Windows**: PowerShell 5.1+ (nativo) e `git`. Não precisa de `jq` (usa `ConvertFrom-Json`).
 
 ## Permissão de execução (macOS/Linux)
 

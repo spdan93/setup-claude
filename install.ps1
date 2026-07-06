@@ -1,28 +1,28 @@
-#!/usr/bin/env pwsh
 # =============================================================================
-# Claude Code kit installer — Windows (PowerShell 7+)
+# Claude Code kit installer — Windows (Windows PowerShell 5.1+ or PowerShell 7+)
 # =============================================================================
-# Native Windows counterpart of install.sh. Idempotent and non-destructive:
-# never deletes your files, never clobbers an existing settings.json (merges),
-# and asks before replacing an existing statusLine.
+# Native Windows counterpart of install.sh. Runs on the built-in Windows
+# PowerShell 5.1 (`powershell`) — PowerShell 7 (`pwsh`) is NOT required.
+# Idempotent and non-destructive: never deletes your files, never clobbers an
+# existing settings.json (merges), asks before replacing an existing statusLine.
 #
 # Layout (hybrid, same as install.sh):
 #   * Statusline       -> USER level  (~/.claude)          — same in every project
 #   * Commands/agents/
 #     skills/hook/etc. -> PROJECT level (<repo>\.claude)   — local to the repo
-#   * <repo>\.claude   -> added to <repo>\.gitignore       — tooling, not committed
+#   * <repo>\.claude   -> added to <repo>\.gitignore
 #   * Durable docs (PRDs, plans, changelog) live OUTSIDE .claude, at the repo root.
 #
-# Usage:
-#   .\install.ps1                     # hybrid install into the current repo
-#   .\install.ps1 C:\path\to\repo     # hybrid install into another repo
-#   .\install.ps1 -Global             # everything into ~/.claude (no split)
+# Usage (from Windows PowerShell or pwsh):
+#   powershell -ExecutionPolicy Bypass -File .\install.ps1                    # current repo
+#   powershell -ExecutionPolicy Bypass -File .\install.ps1 C:\path\to\repo    # another repo
+#   powershell -ExecutionPolicy Bypass -File .\install.ps1 -Global            # ~/.claude only
 #
 # Env:
 #   CLAUDE_CONFIG_DIR   user config dir (default ~/.claude)
 #   FORCE_STATUSLINE=1  replace an existing statusLine without asking
 #
-# Requires: PowerShell 7+ (uses ConvertFrom-Json -AsHashtable). git recommended.
+# Requires: git recommended. No jq needed (uses PowerShell's JSON).
 # Note: the delete-2FA hook is a bash script; on Windows it only fires if a bash
 #       (e.g. Git Bash) is available to Claude Code. The rest works without bash.
 # =============================================================================
@@ -33,12 +33,41 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "PowerShell 7+ required (found $($PSVersionTable.PSVersion)). Install pwsh and re-run."
-    exit 1
+$KitDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# --- JSON helpers (work on both Windows PowerShell 5.1 and PowerShell 7) -----
+function ConvertTo-HashtableDeep($obj) {
+    if ($null -eq $obj) { return $null }
+    if ($obj -is [System.Management.Automation.PSCustomObject]) {
+        $h = @{}
+        foreach ($p in $obj.PSObject.Properties) { $h[$p.Name] = ConvertTo-HashtableDeep $p.Value }
+        return $h
+    }
+    if ($obj -is [System.Collections.IDictionary]) {
+        $h = @{}
+        foreach ($k in @($obj.Keys)) { $h[$k] = ConvertTo-HashtableDeep $obj[$k] }
+        return $h
+    }
+    if ($obj -is [string]) { return $obj }
+    if ($obj -is [System.Collections.IEnumerable]) {
+        return @($obj | ForEach-Object { ConvertTo-HashtableDeep $_ })
+    }
+    return $obj
 }
 
-$KitDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+function Read-JsonAsHashtable($path) {
+    $raw = Get-Content $path -Raw
+    if ([string]::IsNullOrWhiteSpace($raw)) { return @{} }
+    $h = ConvertTo-HashtableDeep ($raw | ConvertFrom-Json)
+    if ($h -isnot [System.Collections.IDictionary]) { return @{} }
+    return $h
+}
+
+# Write UTF-8 WITHOUT BOM (Windows PowerShell 5.1's Set-Content -Encoding utf8
+# adds a BOM, which can break JSON parsing).
+function Write-Utf8NoBom($path, $content) {
+    [System.IO.File]::WriteAllText($path, $content, (New-Object System.Text.UTF8Encoding($false)))
+}
 
 # --- Version stamp ---------------------------------------------------------
 $KitVersion = (Get-Content (Join-Path $KitDir 'VERSION') -ErrorAction SilentlyContinue | Select-Object -First 1)
@@ -65,15 +94,16 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Log "! git not found — the changelog/commit features need it"
 }
 
-# --- Statusline command (Windows) ------------------------------------------
-$SlCmd = "pwsh -NoProfile -File `"$UserDest\statusline\statusline-command-windows.ps1`""
+# --- Statusline command (use pwsh if available, else Windows PowerShell) -----
+$SlInterp = if (Get-Command pwsh -ErrorAction SilentlyContinue) { 'pwsh' } else { 'powershell' }
+$SlCmd = "$SlInterp -NoProfile -File `"$UserDest\statusline\statusline-command-windows.ps1`""
 
 # --- Helpers ---------------------------------------------------------------
 function Ensure-Dir($path) { if (-not (Test-Path $path)) { New-Item -ItemType Directory -Force -Path $path | Out-Null } }
 
 function Ensure-Json($path) {
     Ensure-Dir (Split-Path -Parent $path)
-    if (-not (Test-Path $path)) { '{}' | Set-Content -Path $path -Encoding utf8 }
+    if (-not (Test-Path $path)) { Write-Utf8NoBom $path '{}' }
 }
 
 $ExcludeNames = @('.gitignore', '.DS_Store', 'settings.json', 'settings.local.json', '.kit-version', '.kit-manifest')
@@ -100,8 +130,7 @@ function Copy-Kit($dest, $excludeStatusline) {
 }
 
 function Ensure-Hook($settingsPath, $hookCmd) {
-    $j = (Get-Content $settingsPath -Raw | ConvertFrom-Json -AsHashtable)
-    if ($null -eq $j) { $j = @{} }
+    $j = Read-JsonAsHashtable $settingsPath
     if (-not $j.ContainsKey('hooks')) { $j['hooks'] = @{} }
     if (-not $j['hooks'].ContainsKey('PreToolUse')) { $j['hooks']['PreToolUse'] = @() }
     $has = $false
@@ -111,19 +140,16 @@ function Ensure-Hook($settingsPath, $hookCmd) {
         }
     }
     if (-not $has) {
-        $j['hooks']['PreToolUse'] = @($j['hooks']['PreToolUse']) + @(@{
-                matcher = 'Bash'
-                hooks   = @(@{ type = 'command'; command = $hookCmd; timeout = 10 })
-            })
+        $newEntry = @{ matcher = 'Bash'; hooks = @(@{ type = 'command'; command = $hookCmd; timeout = 10 }) }
+        $j['hooks']['PreToolUse'] = @($j['hooks']['PreToolUse']) + @($newEntry)
     }
-    ($j | ConvertTo-Json -Depth 20) | Set-Content -Path $settingsPath -Encoding utf8
+    Write-Utf8NoBom $settingsPath ($j | ConvertTo-Json -Depth 20)
     Log "ensured delete-2FA hook in $settingsPath"
 }
 
 function Set-Statusline($settingsPath, $cmd) {
     if (-not $cmd) { return }
-    $j = (Get-Content $settingsPath -Raw | ConvertFrom-Json -AsHashtable)
-    if ($null -eq $j) { $j = @{} }
+    $j = Read-JsonAsHashtable $settingsPath
     $set = $true
     if ($j.ContainsKey('statusLine')) {
         $cur = $j['statusLine']['command']
@@ -143,7 +169,7 @@ function Set-Statusline($settingsPath, $cmd) {
     }
     if ($set) {
         $j['statusLine'] = @{ type = 'command'; command = $cmd }
-        ($j | ConvertTo-Json -Depth 20) | Set-Content -Path $settingsPath -Encoding utf8
+        Write-Utf8NoBom $settingsPath ($j | ConvertTo-Json -Depth 20)
         Log "set statusLine in $settingsPath"
     }
 }
@@ -151,8 +177,9 @@ function Set-Statusline($settingsPath, $cmd) {
 function Gitignore-Add($repoRoot, $entry) {
     $gi = Join-Path $repoRoot '.gitignore'
     if (Test-Path $gi) {
-        $lines = Get-Content $gi
-        if ($lines -match "^$([regex]::Escape($entry.TrimEnd('/')))/?$") { Log ".gitignore already ignores $entry"; return }
+        foreach ($line in (Get-Content $gi)) {
+            if ($line.Trim().TrimEnd('/') -eq $entry.TrimEnd('/')) { Log ".gitignore already ignores $entry"; return }
+        }
     }
     Add-Content -Path $gi -Value $entry
     Log "added $entry to .gitignore"
@@ -160,23 +187,22 @@ function Gitignore-Add($repoRoot, $entry) {
 
 function Sync-Manifest($dest, $excludeStatusline) {
     $mf = Join-Path $dest '.kit-manifest'
-    $new = (Kit-Files $excludeStatusline) | Sort-Object
+    $new = @(Kit-Files $excludeStatusline | Sort-Object)
     if (Test-Path $mf) {
-        $old = Get-Content $mf
-        foreach ($rel in $old) {
+        foreach ($rel in (Get-Content $mf)) {
             if ($new -notcontains $rel) {
                 $p = Join-Path $dest ($rel -replace '/', '\')
                 if (Test-Path $p) { Remove-Item $p -Force; Log "pruned (removed from kit): $rel" }
             }
         }
     }
-    $new | Set-Content -Path $mf -Encoding utf8
+    Write-Utf8NoBom $mf (($new -join "`n") + "`n")
 }
 
 function Stamp-Version($dest) {
     $vf = Join-Path $dest '.kit-version'
     $old = if (Test-Path $vf) { (Get-Content $vf -Raw).Trim() } else { '' }
-    $KitVersion | Set-Content -Path $vf -Encoding utf8
+    Write-Utf8NoBom $vf ($KitVersion + "`n")
     if (-not $old) { Log "version: $KitVersion (fresh install)" }
     elseif ($old -eq $KitVersion) { Log "version: $KitVersion (unchanged)" }
     else { Log "version: $old -> $KitVersion (updated)" }
