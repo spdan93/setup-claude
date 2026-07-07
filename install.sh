@@ -53,7 +53,15 @@ log "user:    $USER_DEST"
 # --- Dependency check ------------------------------------------------------
 have() { command -v "$1" >/dev/null 2>&1; }
 HAVE_JQ=true; have jq || HAVE_JQ=false
-[[ "$HAVE_JQ" == true ]] || log "⚠ jq não encontrado — instala tudo mesmo assim; um settings.json NOVO é escrito direto, mas um settings.json JÁ EXISTENTE não é mesclado (instale jq p/ o merge, ou veja INSTALL.md Modo 2)."
+# Fallback de merge sem jq: python3/python (presente na maioria dos sistemas).
+PY=""; for c in python3 python; do have "$c" && { PY="$c"; break; }; done
+if [[ "$HAVE_JQ" != true ]]; then
+  if [[ -n "$PY" ]]; then
+    log "ℹ jq não encontrado — usando $PY para mesclar o settings.json (sem jq)."
+  else
+    log "⚠ jq e python ausentes — instala tudo mesmo assim; um settings.json NOVO é escrito direto, mas um JÁ EXISTENTE não é mesclado (instale jq ou python, ou veja INSTALL.md Modo 2)."
+  fi
+fi
 for dep in git bc; do have "$dep" || log "⚠ optional dependency missing: $dep (statusline needs it)"; done
 
 # --- OS detection → statusline script --------------------------------------
@@ -107,6 +115,95 @@ stamp_version() { # stamp_version <dest>
   else log "version: $old → $KIT_VERSION (updated)"; fi
 }
 
+# --- Fallbacks de merge via python (usados quando jq está ausente) ----------
+py_merge_hook() { # py_merge_hook <settings_file> <hook_cmd>
+  "$PY" - "$1" "$2" <<'PY'
+import json, sys
+f, hook = sys.argv[1], sys.argv[2]
+try:
+    d = json.load(open(f))
+    if not isinstance(d, dict): d = {}
+except Exception:
+    d = {}
+pre = d.setdefault("hooks", {}).setdefault("PreToolUse", [])
+cmds = [hh.get("command") for e in pre if isinstance(e, dict)
+        for hh in e.get("hooks", []) if isinstance(hh, dict)]
+if not any(c and "delete-2fa.sh" in c for c in cmds):
+    pre.append({"matcher": "Bash", "hooks": [{"type": "command", "command": hook, "timeout": 10}]})
+open(f, "w").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+PY
+}
+
+py_set_statusline() { # py_set_statusline <settings_file> <cmd>
+  "$PY" - "$1" "$2" <<'PY'
+import json, sys
+f, cmd = sys.argv[1], sys.argv[2]
+try:
+    d = json.load(open(f))
+    if not isinstance(d, dict): d = {}
+except Exception:
+    d = {}
+d["statusLine"] = {"type": "command", "command": cmd}
+open(f, "w").write(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+PY
+}
+
+py_has_statusline() { # -> "true"/"false"
+  "$PY" - "$1" <<'PY' 2>/dev/null
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+    print("true" if isinstance(d, dict) and "statusLine" in d else "false")
+except Exception:
+    print("false")
+PY
+}
+
+py_cur_statusline() { # -> comando atual da statusLine (ou "?")
+  "$PY" - "$1" <<'PY' 2>/dev/null
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+    sl = d.get("statusLine") if isinstance(d, dict) else None
+    print((sl or {}).get("command", "?"))
+except Exception:
+    print("?")
+PY
+}
+
+json_insert_toplevel() { # json_insert_toplevel <file> <snippet '"chave": valor'> — insere logo após o 1o '{'
+  local f="$1" snippet="$2" tmp; tmp="$(mktemp)"
+  SNIPPET="$snippet" awk '
+    BEGIN { ins = ENVIRON["SNIPPET"]; done = 0 }
+    done == 0 {
+      p = index($0, "{")
+      if (p > 0) {
+        print substr($0, 1, p)
+        printf "  %s,\n", ins
+        rest = substr($0, p + 1)
+        if (rest ~ /[^ \t\r]/) print rest
+        done = 1; next
+      }
+    }
+    { print }
+  ' "$f" > "$tmp" && mv "$tmp" "$f"
+}
+
+sl_should_replace() { # sl_should_replace <settings_file> <cur_cmd> ; 0=substitui 1=mantém
+  local f="$1" cur="$2" reply
+  if [[ "${FORCE_STATUSLINE:-0}" == "1" ]]; then log "↻ replacing existing statusLine (FORCE_STATUSLINE=1)"; return 0; fi
+  if [[ -t 0 ]]; then
+    printf '  ⚠ Já existe uma statusLine em %s:\n      %s\n' "$f" "$cur"
+    printf '    Substituir pela statusline do kit? [y/N] '
+    read -r reply || reply=""
+    case "$reply" in
+      [yY]|[yY][eE][sS]|[sS]|[sS][iI][mM]) log "↻ replacing existing statusLine"; return 0 ;;
+      *) log "↺ kept existing statusLine"; return 1 ;;
+    esac
+  fi
+  log "↺ kept existing statusLine (non-interactive; FORCE_STATUSLINE=1 to replace)"; return 1
+}
+
 ensure_hook() { # ensure_hook <settings_file> <hook_cmd>
   local f="$1" hook="$2" tmp
   if [[ "${HAVE_JQ:-true}" == true ]]; then
@@ -119,52 +216,66 @@ ensure_hook() { # ensure_hook <settings_file> <hook_cmd>
     log "ensured delete-2FA hook in $f"
     return 0
   fi
-  # --- sem jq: escreve direto se novo/vazio; não mescla settings já preenchido ---
+  if [[ -n "$PY" ]]; then
+    if grep -q 'delete-2fa.sh' "$f" 2>/dev/null; then
+      log "hook delete-2FA já presente em $f"
+    elif py_merge_hook "$f" "$hook"; then
+      log "mesclou hook delete-2FA em $f (via $PY, sem jq)"
+    else
+      log "⚠ falha ao mesclar hook via $PY em $f — adicione o bloco 'hooks' manualmente (INSTALL.md Modo 2)."
+    fi
+    return 0
+  fi
+  # --- sem jq/python: copia o bloco direto (via awk, sem dependência externa) ---
   if grep -q 'delete-2fa.sh' "$f" 2>/dev/null; then
-    log "hook delete-2FA já presente em $f (sem jq)"
+    log "hook delete-2FA já presente em $f"
   elif [[ ! -s "$f" || "$(tr -d '[:space:]' < "$f")" == "{}" ]]; then
     printf '{\n  "hooks": {\n    "PreToolUse": [\n      { "matcher": "Bash", "hooks": [ { "type": "command", "command": "%s", "timeout": 10 } ] }\n    ]\n  }\n}\n' "$hook" > "$f"
-    log "escreveu hook delete-2FA em $f (sem jq)"
+    log "escreveu hook delete-2FA em $f"
+  elif grep -q '"hooks"' "$f" 2>/dev/null; then
+    log "⚠ $f já tem uma seção 'hooks' e não há jq/python p/ mesclar com segurança — adicione o hook manualmente (INSTALL.md Modo 2)."
   else
-    log "⚠ $f já tem conteúdo e jq está ausente — hook NÃO mesclado. Instale jq ou adicione o bloco 'hooks' manualmente (INSTALL.md Modo 2)."
+    json_insert_toplevel "$f" "\"hooks\": { \"PreToolUse\": [ { \"matcher\": \"Bash\", \"hooks\": [ { \"type\": \"command\", \"command\": \"$hook\", \"timeout\": 10 } ] } ] }"
+    log "copiou hook delete-2FA em $f (via awk, sem jq/python)"
   fi
 }
 
 set_statusline() { # set_statusline <settings_file> <cmd>
-  local f="$1" cmd="$2" tmp setSL=true cur reply cmd_esc
+  local f="$1" cmd="$2" tmp cur cmd_esc
   [[ -z "$cmd" ]] && return 0
   if [[ "${HAVE_JQ:-true}" == true ]]; then
     if [[ "$(jq 'has("statusLine")' "$f")" == "true" ]]; then
       cur="$(jq -r '.statusLine.command // "?"' "$f")"
-      if [[ "${FORCE_STATUSLINE:-0}" == "1" ]]; then
-        log "↻ replacing existing statusLine (FORCE_STATUSLINE=1)"
-      elif [[ -t 0 ]]; then
-        printf '  ⚠ Já existe uma statusLine em %s:\n      %s\n' "$f" "$cur"
-        printf '    Substituir pela statusline do kit? [y/N] '
-        read -r reply || reply=""
-        case "$reply" in
-          [yY]|[yY][eE][sS]|[sS]|[sS][iI][mM]) log "↻ replacing existing statusLine" ;;
-          *) setSL=false; log "↺ kept existing statusLine" ;;
-        esac
-      else
-        setSL=false; log "↺ kept existing statusLine (non-interactive; FORCE_STATUSLINE=1 to replace)"
-      fi
+      sl_should_replace "$f" "$cur" || return 0
     fi
-    [[ "$setSL" == "true" ]] || return 0
     tmp="$(mktemp)"
     jq --arg cmd "$cmd" '.statusLine = {type:"command", command:$cmd}' "$f" > "$tmp" && mv "$tmp" "$f"
     log "set statusLine in $f"
     return 0
   fi
-  # --- sem jq: escreve direto se novo/vazio; não mescla settings já preenchido ---
+  if [[ -n "$PY" ]]; then
+    if [[ "$(py_has_statusline "$f")" == "true" ]]; then
+      cur="$(py_cur_statusline "$f")"
+      sl_should_replace "$f" "$cur" || return 0
+    fi
+    if py_set_statusline "$f" "$cmd"; then
+      log "set statusLine in $f (via $PY, sem jq)"
+    else
+      log "⚠ falha ao gravar statusLine via $PY em $f — adicione o bloco manualmente (INSTALL.md Modo 2)."
+    fi
+    return 0
+  fi
+  # --- sem jq/python: copia o bloco direto (via awk, sem dependência externa) ---
   if grep -q '"statusLine"' "$f" 2>/dev/null; then
-    log "↺ statusLine já existe em $f e jq está ausente — mantida (instale jq p/ substituir, ou edite manualmente)."
+    log "↺ statusLine já existe em $f — mantida (edite manualmente se quiser trocar)."
   elif [[ ! -s "$f" || "$(tr -d '[:space:]' < "$f")" == "{}" ]]; then
     cmd_esc="${cmd//\"/\\\"}"
     printf '{\n  "statusLine": { "type": "command", "command": "%s" }\n}\n' "$cmd_esc" > "$f"
-    log "escreveu statusLine em $f (sem jq)"
+    log "escreveu statusLine em $f"
   else
-    log "⚠ $f já tem conteúdo e jq está ausente — statusLine NÃO mesclada. Instale jq ou adicione o bloco manualmente (INSTALL.md Modo 2)."
+    cmd_esc="${cmd//\"/\\\"}"
+    json_insert_toplevel "$f" "\"statusLine\": { \"type\": \"command\", \"command\": \"$cmd_esc\" }"
+    log "copiou statusLine em $f (via awk, sem jq/python)"
   fi
 }
 

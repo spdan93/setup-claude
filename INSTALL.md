@@ -153,7 +153,7 @@ saíram do kit — **sem tocar** no que você criou dentro do `.claude` —, pre
 
 | Peça | Precisa de |
 |------|-----------|
-| `install.sh` (mac/linux) | `jq` **opcional** — só pra **mesclar** num `settings.json` que já existe; numa instalação limpa ele escreve o bloco direto, sem `jq` |
+| `install.sh` (mac/linux) | **nada a instalar.** Pra mesclar num `settings.json` já existente ele usa, nesta ordem, `jq` → `python3` → `awk` (sempre presente). O `awk` copia o bloco direto — então nunca é preciso instalar `jq`/`python` |
 | `install.ps1` (Windows) | **nada além do PowerShell 5.1** (JSON nativo — sem `jq`) |
 | Modo 2 (manual / por agente) | nada (o LLM/você faz o merge do JSON) |
 | Statusline (mac/linux) | `git`, `bc` (e `jq` pro render) |
