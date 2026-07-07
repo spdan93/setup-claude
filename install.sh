@@ -59,7 +59,7 @@ if [[ "$HAVE_JQ" != true ]]; then
   if [[ -n "$PY" ]]; then
     log "ℹ jq não encontrado — usando $PY para mesclar o settings.json (sem jq)."
   else
-    log "⚠ jq e python ausentes — instala tudo mesmo assim; um settings.json NOVO é escrito direto, mas um JÁ EXISTENTE não é mesclado (instale jq ou python, ou veja INSTALL.md Modo 2)."
+    log "ℹ jq/python ausentes — usando awk para mesclar o settings.json (sem dependências)."
   fi
 fi
 for dep in git bc; do have "$dep" || log "⚠ optional dependency missing: $dep (statusline needs it)"; done
@@ -289,7 +289,38 @@ gitignore_add() { # gitignore_add <repo_root> <entry>
   log "added $entry to $(basename "$1")/.gitignore"
 }
 
+offer_statusline_dep() { # a statusline lê JSON a cada render: precisa de jq OU python
+  [[ -z "$SL_CMD" ]] && return 0
+  [[ "$HAVE_JQ" == true || -n "$PY" ]] && return 0
+  local pm="" reply
+  if   have apt-get; then pm="sudo apt-get install -y jq"
+  elif have dnf;     then pm="sudo dnf install -y jq"
+  elif have pacman;  then pm="sudo pacman -S --noconfirm jq"
+  elif have zypper;  then pm="sudo zypper install -y jq"
+  elif have apk;     then pm="sudo apk add jq"
+  elif have brew;    then pm="brew install jq"
+  fi
+  log "⚠ A statusline lê um JSON a cada render e precisa de 'jq' ou 'python3' — nenhum foi encontrado."
+  if [[ -z "$pm" ]]; then
+    log "  Instale jq (ou python3) pelo gerenciador do seu sistema e reabra o Claude Code."
+    return 0
+  fi
+  if [[ -t 0 ]]; then
+    printf '    Instalar jq agora? (%s)  [y/N] ' "$pm"
+    read -r reply || reply=""
+    case "$reply" in
+      [yY]|[yY][eE][sS]|[sS]|[sS][iI][mM])
+        log "  → $pm"
+        if eval "$pm"; then HAVE_JQ=true; log "  ✓ jq instalado"; else log "  ⚠ falhou — rode manualmente: $pm"; fi ;;
+      *) log "  ok — quando quiser, rode:  $pm" ;;
+    esac
+  else
+    log "  Rode no terminal:  $pm"
+  fi
+}
+
 # =============================================================================
+offer_statusline_dep
 if [[ "$HYBRID" == true ]]; then
   # --- PROJECT level: everything except statusline ---
   copy_kit "$PROJ_DEST" --exclude='statusline'

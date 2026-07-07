@@ -52,7 +52,8 @@ global em `~/.claude/`). Escolha **uma** linha conforme o SO:
 
 ## Dependências
 
-- **macOS/Linux**: `jq`, `git`, `bc` (todos comuns; instale via brew/apt se faltar).
+- **macOS/Linux**: `jq` **ou** `python3` pra ler o JSON (usa o que existir; sem os dois,
+  degrada sem quebrar). `git` opcional (branch/link). Não precisa mais de `bc`.
 - **Windows**: PowerShell 5.1+ (nativo) e `git`. Não precisa de `jq` (usa `ConvertFrom-Json`).
 
 ## Permissão de execução (macOS/Linux)

@@ -1,25 +1,73 @@
 #!/usr/bin/env bash
 input=$(cat)
 
-# Parse JSON
-display_name=$(echo "$input" | jq -r '.model.display_name // empty')
-ctx_size=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
-used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
-cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
-total_in=$(echo "$input" | jq -r '.context_window.total_input_tokens // empty')
-total_out=$(echo "$input" | jq -r '.context_window.total_output_tokens // empty')
+# --- Parse JSON: jq -> python3 -> (degrada vazio). NÃO exige jq. -------------
+if command -v jq >/dev/null 2>&1; then JSON_TOOL=jq
+elif command -v python3 >/dev/null 2>&1; then JSON_TOOL=python3
+elif command -v python >/dev/null 2>&1; then JSON_TOOL=python
+else JSON_TOOL=none; fi
 
-# Rate limits
-five_h_pct=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty')
-five_h_resets=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
-seven_d_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty')
-seven_d_resets=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
+emit_fields() {
+  case "$JSON_TOOL" in
+    jq)
+      printf '%s' "$input" | jq -r '
+        .model.display_name // "",
+        .context_window.context_window_size // "",
+        (.context_window.used_percentage // 0),
+        (.workspace.current_dir // .cwd // ""),
+        .context_window.total_input_tokens // "",
+        .context_window.total_output_tokens // "",
+        .rate_limits.five_hour.used_percentage // "",
+        .rate_limits.five_hour.resets_at // "",
+        .rate_limits.seven_day.used_percentage // "",
+        .rate_limits.seven_day.resets_at // "",
+        .cost.total_cost_usd // "",
+        .cost.total_duration_ms // "",
+        .cost.total_lines_added // "",
+        .cost.total_lines_removed // ""
+      ' ;;
+    python3|python)
+      printf '%s' "$input" | "$JSON_TOOL" -c '
+import json, sys
+try: d = json.load(sys.stdin)
+except Exception: d = {}
+def gp(path, default=""):
+    x = d
+    for k in path.split("."):
+        if isinstance(x, dict) and x.get(k) is not None: x = x[k]
+        else: return default
+    return x
+cwd = gp("workspace.current_dir") or gp("cwd") or ""
+for v in [gp("model.display_name"), gp("context_window.context_window_size"),
+          gp("context_window.used_percentage", 0), cwd,
+          gp("context_window.total_input_tokens"), gp("context_window.total_output_tokens"),
+          gp("rate_limits.five_hour.used_percentage"), gp("rate_limits.five_hour.resets_at"),
+          gp("rate_limits.seven_day.used_percentage"), gp("rate_limits.seven_day.resets_at"),
+          gp("cost.total_cost_usd"), gp("cost.total_duration_ms"),
+          gp("cost.total_lines_added"), gp("cost.total_lines_removed")]:
+    print("" if v is None else v)
+' ;;
+    *) for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do echo ""; done ;;
+  esac
+}
 
-# Cost & duration
-cost=$(echo "$input" | jq -r '.cost.total_cost_usd // empty')
-duration_ms=$(echo "$input" | jq -r '.cost.total_duration_ms // empty')
-lines_added=$(echo "$input" | jq -r '.cost.total_lines_added // empty')
-lines_removed=$(echo "$input" | jq -r '.cost.total_lines_removed // empty')
+{
+  IFS= read -r display_name
+  IFS= read -r ctx_size
+  IFS= read -r used_pct
+  IFS= read -r cwd
+  IFS= read -r total_in
+  IFS= read -r total_out
+  IFS= read -r five_h_pct
+  IFS= read -r five_h_resets
+  IFS= read -r seven_d_pct
+  IFS= read -r seven_d_resets
+  IFS= read -r cost
+  IFS= read -r duration_ms
+  IFS= read -r lines_added
+  IFS= read -r lines_removed
+} < <(emit_fields)
+used_pct=$(printf '%s' "${used_pct:-0}" | cut -d. -f1); [ -z "$used_pct" ] && used_pct=0
 
 # Model tag: Opus(1M), Sonnet, Haiku
 model_base=$(echo "$display_name" | awk '{print $1}')
@@ -92,9 +140,9 @@ fmt_tokens() {
   local t=$1
   [ -z "$t" ] || [ "$t" = "null" ] && return
   if [ "$t" -ge 1000000 ] 2>/dev/null; then
-    printf "%.1fM" "$(echo "$t / 1000000" | bc -l)"
+    printf "%d.%dM" $((t / 1000000)) $(((t % 1000000) / 100000))
   elif [ "$t" -ge 1000 ] 2>/dev/null; then
-    printf "%.0fK" "$(echo "$t / 1000" | bc -l)"
+    printf "%dK" $((t / 1000))
   else
     printf "%d" "$t"
   fi
