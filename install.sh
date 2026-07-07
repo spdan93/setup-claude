@@ -52,7 +52,8 @@ log "user:    $USER_DEST"
 
 # --- Dependency check ------------------------------------------------------
 have() { command -v "$1" >/dev/null 2>&1; }
-have jq || { echo "✗ 'jq' is required to merge settings.json. Install it and re-run." >&2; exit 1; }
+HAVE_JQ=true; have jq || HAVE_JQ=false
+[[ "$HAVE_JQ" == true ]] || log "⚠ jq não encontrado — instala tudo mesmo assim; um settings.json NOVO é escrito direto, mas um settings.json JÁ EXISTENTE não é mesclado (instale jq p/ o merge, ou veja INSTALL.md Modo 2)."
 for dep in git bc; do have "$dep" || log "⚠ optional dependency missing: $dep (statusline needs it)"; done
 
 # --- OS detection → statusline script --------------------------------------
@@ -107,38 +108,64 @@ stamp_version() { # stamp_version <dest>
 }
 
 ensure_hook() { # ensure_hook <settings_file> <hook_cmd>
-  local f="$1" hook="$2" tmp; tmp="$(mktemp)"
-  jq --arg hook "$hook" '
-    .hooks = (.hooks // {}) | .hooks.PreToolUse = (.hooks.PreToolUse // [])
-    | ([.hooks.PreToolUse[]?.hooks[]?.command] | map(select(. != null)) | any(test("delete-2fa.sh"))) as $has
-    | if $has then . else .hooks.PreToolUse += [{matcher:"Bash",hooks:[{type:"command",command:$hook,timeout:10}]}] end
-  ' "$f" > "$tmp" && mv "$tmp" "$f"
-  log "ensured delete-2FA hook in $f"
+  local f="$1" hook="$2" tmp
+  if [[ "${HAVE_JQ:-true}" == true ]]; then
+    tmp="$(mktemp)"
+    jq --arg hook "$hook" '
+      .hooks = (.hooks // {}) | .hooks.PreToolUse = (.hooks.PreToolUse // [])
+      | ([.hooks.PreToolUse[]?.hooks[]?.command] | map(select(. != null)) | any(test("delete-2fa.sh"))) as $has
+      | if $has then . else .hooks.PreToolUse += [{matcher:"Bash",hooks:[{type:"command",command:$hook,timeout:10}]}] end
+    ' "$f" > "$tmp" && mv "$tmp" "$f"
+    log "ensured delete-2FA hook in $f"
+    return 0
+  fi
+  # --- sem jq: escreve direto se novo/vazio; não mescla settings já preenchido ---
+  if grep -q 'delete-2fa.sh' "$f" 2>/dev/null; then
+    log "hook delete-2FA já presente em $f (sem jq)"
+  elif [[ ! -s "$f" || "$(tr -d '[:space:]' < "$f")" == "{}" ]]; then
+    printf '{\n  "hooks": {\n    "PreToolUse": [\n      { "matcher": "Bash", "hooks": [ { "type": "command", "command": "%s", "timeout": 10 } ] }\n    ]\n  }\n}\n' "$hook" > "$f"
+    log "escreveu hook delete-2FA em $f (sem jq)"
+  else
+    log "⚠ $f já tem conteúdo e jq está ausente — hook NÃO mesclado. Instale jq ou adicione o bloco 'hooks' manualmente (INSTALL.md Modo 2)."
+  fi
 }
 
 set_statusline() { # set_statusline <settings_file> <cmd>
-  local f="$1" cmd="$2" tmp setSL=true cur reply
+  local f="$1" cmd="$2" tmp setSL=true cur reply cmd_esc
   [[ -z "$cmd" ]] && return 0
-  if [[ "$(jq 'has("statusLine")' "$f")" == "true" ]]; then
-    cur="$(jq -r '.statusLine.command // "?"' "$f")"
-    if [[ "${FORCE_STATUSLINE:-0}" == "1" ]]; then
-      log "↻ replacing existing statusLine (FORCE_STATUSLINE=1)"
-    elif [[ -t 0 ]]; then
-      printf '  ⚠ Já existe uma statusLine em %s:\n      %s\n' "$f" "$cur"
-      printf '    Substituir pela statusline do kit? [y/N] '
-      read -r reply || reply=""
-      case "$reply" in
-        [yY]|[yY][eE][sS]|[sS]|[sS][iI][mM]) log "↻ replacing existing statusLine" ;;
-        *) setSL=false; log "↺ kept existing statusLine" ;;
-      esac
-    else
-      setSL=false; log "↺ kept existing statusLine (non-interactive; FORCE_STATUSLINE=1 to replace)"
+  if [[ "${HAVE_JQ:-true}" == true ]]; then
+    if [[ "$(jq 'has("statusLine")' "$f")" == "true" ]]; then
+      cur="$(jq -r '.statusLine.command // "?"' "$f")"
+      if [[ "${FORCE_STATUSLINE:-0}" == "1" ]]; then
+        log "↻ replacing existing statusLine (FORCE_STATUSLINE=1)"
+      elif [[ -t 0 ]]; then
+        printf '  ⚠ Já existe uma statusLine em %s:\n      %s\n' "$f" "$cur"
+        printf '    Substituir pela statusline do kit? [y/N] '
+        read -r reply || reply=""
+        case "$reply" in
+          [yY]|[yY][eE][sS]|[sS]|[sS][iI][mM]) log "↻ replacing existing statusLine" ;;
+          *) setSL=false; log "↺ kept existing statusLine" ;;
+        esac
+      else
+        setSL=false; log "↺ kept existing statusLine (non-interactive; FORCE_STATUSLINE=1 to replace)"
+      fi
     fi
+    [[ "$setSL" == "true" ]] || return 0
+    tmp="$(mktemp)"
+    jq --arg cmd "$cmd" '.statusLine = {type:"command", command:$cmd}' "$f" > "$tmp" && mv "$tmp" "$f"
+    log "set statusLine in $f"
+    return 0
   fi
-  [[ "$setSL" == "true" ]] || return 0
-  tmp="$(mktemp)"
-  jq --arg cmd "$cmd" '.statusLine = {type:"command", command:$cmd}' "$f" > "$tmp" && mv "$tmp" "$f"
-  log "set statusLine in $f"
+  # --- sem jq: escreve direto se novo/vazio; não mescla settings já preenchido ---
+  if grep -q '"statusLine"' "$f" 2>/dev/null; then
+    log "↺ statusLine já existe em $f e jq está ausente — mantida (instale jq p/ substituir, ou edite manualmente)."
+  elif [[ ! -s "$f" || "$(tr -d '[:space:]' < "$f")" == "{}" ]]; then
+    cmd_esc="${cmd//\"/\\\"}"
+    printf '{\n  "statusLine": { "type": "command", "command": "%s" }\n}\n' "$cmd_esc" > "$f"
+    log "escreveu statusLine em $f (sem jq)"
+  else
+    log "⚠ $f já tem conteúdo e jq está ausente — statusLine NÃO mesclada. Instale jq ou adicione o bloco manualmente (INSTALL.md Modo 2)."
+  fi
 }
 
 gitignore_add() { # gitignore_add <repo_root> <entry>
