@@ -81,11 +81,15 @@ copy_kit() { # copy_kit <dest> <extra rsync excludes...>
   if have rsync; then
     rsync -a --exclude='.git' --exclude='.gitignore' --exclude='.DS_Store' \
       --exclude='settings.json' --exclude='settings.local.json' \
-      --exclude='.kit-version' --exclude='.kit-manifest' "$@" "$KIT_DIR"/ "$dest"/
+      --exclude='.kit-version' --exclude='.kit-manifest' \
+      --exclude='/install.sh' --exclude='/install.ps1' \
+      --exclude='/README.md' --exclude='/INSTALL.md' --exclude='/docs' "$@" "$KIT_DIR"/ "$dest"/
   else
     ( cd "$KIT_DIR" && find . -type f ! -path './.git/*' ! -name '.gitignore' ! -name '.DS_Store' \
         ! -name 'settings.json' ! -name 'settings.local.json' \
-        ! -name '.kit-version' ! -name '.kit-manifest' -print0 \
+        ! -name '.kit-version' ! -name '.kit-manifest' \
+        ! -path './install.sh' ! -path './install.ps1' \
+        ! -path './README.md' ! -path './INSTALL.md' ! -path './docs/*' -print0 \
       | while IFS= read -r -d '' f; do mkdir -p "$dest/$(dirname "$f")"; cp "$f" "$dest/$f"; done )
   fi
 }
@@ -95,7 +99,9 @@ sync_manifest() { # sync_manifest <dest> <exclude_statusline:0|1>  — prune fil
   local mf="$dest/.kit-manifest" newmf
   local prune=(! -path './.git/*' ! -name '.gitignore' ! -name '.DS_Store'
                ! -name 'settings.json' ! -name 'settings.local.json'
-               ! -name '.kit-manifest' ! -name '.kit-version')
+               ! -name '.kit-manifest' ! -name '.kit-version'
+               ! -path './install.sh' ! -path './install.ps1'
+               ! -path './README.md' ! -path './INSTALL.md' ! -path './docs/*')
   [[ "$excl_sl" == 1 ]] && prune+=(! -path './statusline/*')
   newmf="$(cd "$KIT_DIR" && find . -type f "${prune[@]}" | sed 's|^\./||' | sort)"
   if [[ -f "$mf" ]]; then
