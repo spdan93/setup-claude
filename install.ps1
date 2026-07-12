@@ -107,15 +107,22 @@ function Ensure-Json($path) {
 }
 
 $ExcludeNames = @('.gitignore', '.DS_Store', 'settings.json', 'settings.local.json', '.kit-version', '.kit-manifest')
+# Meta-arquivos do kit (so na raiz): instaladores e docs de instalacao nao vao
+# para o .claude do projeto. Ancorados na raiz para preservar statusline/README.md.
+$ExcludeTopFiles = @('install.sh', 'install.ps1', 'README.md', 'INSTALL.md')
+$ExcludeTopDirs = @('docs')
 
 function Kit-Files($excludeStatusline) {
     Get-ChildItem -Path $KitDir -Recurse -File | ForEach-Object {
         $rel = $_.FullName.Substring($KitDir.Length).TrimStart('\', '/')
+        $relFwd = $rel -replace '\\', '/'
         if ($rel -like '.git*') { return }
         if ($ExcludeNames -contains $_.Name) { return }
+        if ($ExcludeTopFiles -contains $relFwd) { return }
         $top = ($rel -split '[\\/]')[0]
+        if ($ExcludeTopDirs -contains $top) { return }
         if ($excludeStatusline -and $top -eq 'statusline') { return }
-        $rel -replace '\\', '/'
+        $relFwd
     }
 }
 
